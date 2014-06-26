@@ -1,0 +1,336 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+
+
+
+
+
+#
+# NAME: db2_deinstall
+#
+# FUNCTION: db2_install - Install Full set of db2 packages to specified 
+#                         DB2 location.
+#
+########################################################################
+
+# Options for "set" command
+setopts="${setopts:-+x}"
+
+TRUE=0                     # True variable
+FALSE=1                    # False variable
+export TRUE FALSE
+FIXPACK=${FALSE?}
+PROGNAME=`/usr/bin/basename $0` # Program name
+curdir=`/bin/pwd -P`
+PROGDIR=`/usr/bin/dirname $0`
+cd ${PROGDIR?}
+PROGDIR=`/bin/pwd -P`
+cd ${curdir?}
+DB2_VALID_VER="10.1"
+
+#-----------------------------------------------------------------------#
+#               Start of function definitions
+#-----------------------------------------------------------------------#
+
+
+
+set_lang_internal ()
+{
+    set ${setopts?}
+    bindir="$1"
+    msgdir="$2"
+    lang="$3"
+
+
+
+
+    CMD_DB2LANGDIR="${bindir?}/db2langdir"
+
+    if [ "X$lang" != "X" ]; then
+       LANG_CUSTOM=0
+    else
+       LANG_CUSTOM=1
+    fi
+    # Default locale name and locale-specific message directory
+    
+    LANG=${LANG:-C}
+    locname=${LANG?}
+    
+    if [ ${LANG_CUSTOM?} -eq 0 ]; then
+       locname=`${CMD_DB2LANGDIR?} ${lang?} -locale`
+       DB2_LANG_JAVA=${locname?}
+    fi
+
+    langdir=`${CMD_DB2LANGDIR?} ${locname?}`
+    clangdir=`${CMD_DB2LANGDIR?} C`
+
+    if [ -f ${msgdir?}/${langdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${langdir?}/db2install.cat"
+        LANGUAGEDIR=${langdir?}
+    elif [ -f ${msgdir?}/${clangdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${clangdir?}/db2install.cat"
+        LANGUAGEDIR=${clangdir?}
+    else
+        /bin/echo "DBI1055E The message file db2install.cat cannot be found."
+        /bin/echo
+        /bin/echo "Explanation:  The message file required by this"
+        /bin/echo "script is missing from the system; it may have been"
+        /bin/echo "deleted or the database products may have been loaded"
+        /bin/echo "incorrectly."
+        /bin/echo
+        /bin/echo "User Response:  Verify that the product option containing"
+        /bin/echo "the message file is installed correctly.  If there are"
+        /bin/echo "verification errors; reinstall the product option."
+        exit 67
+    fi
+
+    # check if the locale exists.  If not, we'll set LANG to C for any
+    # subprocesses.
+    /usr/bin/locale -a 2> /dev/null | grep '^'${locname?}'$' > /dev/null
+    if [ $? -ne 0 ]
+    then
+        locname=C
+    fi
+
+    # if a language was passed in, set LANG - but if not, leave it alone.
+    # (if it isn't a valid language, well, try resetting anyway)
+    if [ ${LANG_CUSTOM?} -eq 0 ]
+    then
+        /usr/bin/locale -a 2> /dev/null | grep '^'${LANG:-C}'$' > /dev/null
+        if [ $? -eq 0 ]; then
+            LANG=${locname?}
+        else 
+            # if locname is valid, set LANG to locname
+            /usr/bin/locale -a 2> /dev/null | grep '^'${locname:-C}'$' > /dev/null
+            if [ $? -eq 0 ]; then
+                LANG=${locname?}
+            fi
+        fi
+    fi
+
+    # Set LANG and NLSPATH variables for use by dspmsg command
+    NLSPATH="${msgdir?}/%L/%N:${msgdir?}/${clangdir?}/%N"
+    SHORTLANG=`${CMD_DB2LANGDIR?} ${LANG:-C} -short`
+
+    export LANG NLSPATH
+}
+
+set_lang ()
+{
+    set ${setopts?}
+    set_lang_internal ${BINDIR?} ${INSTALLER_SOURCE?}/locale $1
+    export SHORTLANG
+}
+
+
+# To display the command syntax
+syntax ()
+{
+
+    display_msg ${DB2CAT?} 47 \
+       "DBI1047I Usage: db2_deinstall [-b <installpath>] \
+-F <featureName> | -r <rspFile> | -a  [-l <logFile>] [-t <trcFile>] [-h | -?]"
+    exit 67
+}
+
+# Default initialization for command execution
+initialization ()
+{
+    set ${setopts?}
+
+    DEBUG=${FALSE?}
+    BASE_DIR=""
+    BASE_DIR_SPECIFIED=${FALSE?}
+    INSTALLER_SOURCE=${PROGDIR?}
+    BINDIR=${PROGDIR?}/../bin
+
+    PATH=".:"${PATH}
+    export PATH
+    LIBPATH_ORG=${LIBPATH}
+    LIBPATH=.:${INSTALLER_SOURCE?}:${LIBPATH}
+    export LIBPATH
+    LD_LIBRARY_PATH_ORG=${LD_LIBRARY_PATH}
+    LD_LIBRARY_PATH=.:${INSTALLER_SOURCE?}:${LD_LIBRARY_PATH}
+    export LD_LIBRARY_PATH
+    SHLIB_PATH_ORG=${SHLIB_PATH}
+    SHLIB_PATH=.:${INSTALLER_SOURCE?}:${SHLIB_PATH}
+    export SHLIB_PATH
+
+    set_lang
+}
+
+# Reset the related LIB path to the original ones
+reset_path ()
+{
+    set ${setopts?}
+
+    LIBPATH=${LIBPATH_ORG}
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH_ORG}
+    SHLIB_PATH=${SHLIB_PATH_ORG}
+    export LIBPATH LD_LIBRARY_PATH SHLIB_PATH
+}
+
+
+# Check if absolute path is given
+chk_abs_path ()
+{
+   set ${setopts?}
+   file_path=$1
+   /bin/echo ${file_path?} | /usr/bin/grep '^/' 2>&1 1>/dev/null
+   return $?
+}
+
+#-----------------------------------------------------------------------
+# Name       - display_msg
+# Function   - Displays a message from the message catalog
+# Parameters - $1 - name of the message catalog
+#            - $2 - message number
+#            - $3 - default message string
+#            - $4,$5,$6 - arguments to substitute in msg string, if needed
+#-----------------------------------------------------------------------
+display_msg()
+{
+    set ${setopts?}
+
+    unset catname msgid deftmsg msgstr
+    catname="$1"
+    msgid=$2
+    deftmsg="$3"
+
+    shift;shift;shift
+
+    ${BINDIR?}/disp_msg 1 ${msgid} ${catname} "${deftmsg?}" "$@" 2>&1
+ 
+} 
+
+# Validate the version of DB2 to be uninstalled to make sure
+# that the DB2 version matches the DB2 version in current DB2 media
+validate_db2ver()
+{
+    set ${setopts?}
+    valid_db2_ver=$1
+    base_db2dir=$2
+    validate_db2ver_rc=${TRUE?}
+    cd ${base_db2dir?}/.metadata
+    spec_file=`/usr/bin/find . -name spec 2>/dev/null | /usr/bin/head -n 1`
+    real_vrmf=`/usr/bin/grep vrmf ${spec_file?} 2>/dev/null`
+    if [ $? -eq ${TRUE?} ]; then
+       real_db2v=`/bin/echo ${real_vrmf?} | /usr/bin/cut -d= -f2 | /usr/bin/cut -d. -f1`
+       real_db2r=`/bin/echo ${real_vrmf?} | /usr/bin/cut -d= -f2 | /usr/bin/cut -d. -f2`
+       real_db2vr="${real_db2v?}.${real_db2r?}"
+       if [ "X${DB2_VALID_VER?}" != "X${real_db2vr?}" ]; then
+          validate_db2ver_rc=${FALSE?}
+       fi
+    else
+       validate_db2ver_rc=${FALSE?}
+    fi
+    return ${validate_db2ver_rc?}
+}
+
+#-----------------------------------------------------------------------#
+#                End of function definitions
+#-----------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------#
+#                             Main program
+#-----------------------------------------------------------------------#
+
+set ${setopts?}
+
+initialization # Set up environment for DB2 Installer
+
+# Process command-line options
+case $# in
+    0)
+        syntax ;;
+    *)
+       while getopts :F:r:b:l:s:f:t:ahd optchar; do
+            case ${optchar?} in
+                b)  # specified install location
+                    if [ -z "${OPTARG?}" ]
+                    then
+                        syntax
+                    fi
+                    BASE_DIR=${OPTARG?}
+                    BASE_DIR_SPECIFIED=${TRUE?}
+                    chk_abs_path ${BASE_DIR?}
+                    if [ $? -ne ${TRUE?} ]; then
+                        syntax
+                    fi
+                    ;;
+                d)  # debug mode used for IBM Support
+                    DEBUG=${TRUE?}
+                    setopts="-x"
+                    ;;
+                f)  # force to remove the $HOME/sqllib for nonroot install
+                    if [ -z "${OPTARG?}" -o "X${OPTARG?}" != "Xsqllib" -a "X${OPTARG?}" != "Xnobackup" ]; then
+                        syntax
+                    fi
+                    ;;
+                F|r|l|t|s)
+                    if [ -z "${OPTARG?}" ]
+                    then
+                        syntax
+                    fi
+                    ;;
+                a)  ;;
+                h|?)
+                    syntax
+                    ;;
+            esac
+       done
+       DEINSTALL_OPTS="$@"
+       shift `expr $OPTIND - 1` # Detele all option args
+       if [ "X$1" != "X" ]; then
+            syntax
+       fi
+       ;;
+esac
+
+set ${setopts?}
+
+if [ ${BASE_DIR_SPECIFIED?} -ne ${TRUE?} ]; then
+    /bin/echo " "
+    display_msg ${DB2CAT?} 5014 \
+    "Enter full path name for the install directory -\n"
+    /bin/echo "------------------------------------------------"
+    read BASE_DIR
+    chk_abs_path ${BASE_DIR?}
+    if [ $? -ne ${TRUE?} ]; then
+          syntax
+    fi
+    DEINSTALL_OPTS="${DEINSTALL_OPTS?} -b ${BASE_DIR?}"
+fi
+
+DEINSTALL_CMD="${BASE_DIR?}/install/db2_deinstall"
+
+if [ ! -f "${DEINSTALL_CMD?}" ]; then
+    display_msg ${DB2CAT?} 81 \
+       "DBI1081E  The file or directory %s is missing.\n" "${DEINSTALL_CMD?}"
+   syntax
+fi
+
+validate_db2ver ${DB2_VALID_VER?} ${BASE_DIR?}
+
+if [ $? -ne ${TRUE?} ]; then
+    display_msg ${DB2CAT?} 248 \
+       "DBI1248E:You can only  use this version of the db2_deinstall command to uninstall a DB2 version %s product.\n" \
+       ${DB2_VALID_VER?} 
+    exit 67
+fi
+
+reset_path
+exec ${DEINSTALL_CMD?} ${DEINSTALL_OPTS?} -w
+

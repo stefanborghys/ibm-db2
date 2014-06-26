@@ -1,0 +1,159 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+#
+# NAME: db2iexec
+#
+# FUNCTION: db2iexec - executes instances related commands from DB2 Installer
+#
+# USAGE: db2iexec [-n] <instance_name> <list_of_shell_commands>
+#
+#############################################################################
+# Options for "set" command
+setopts="${setopts:-+x}"
+set ${setopts?}
+
+# Current DB2 installation directory
+
+curdir=`/bin/pwd -P`
+DB2DIR=`/usr/bin/dirname $0`
+cd ${DB2DIR?}
+DB2DIR=`/bin/pwd -P`
+cd ${DB2DIR?}
+DB2DIR=`/usr/bin/dirname ${DB2DIR?}`
+if [ ! -d ${DB2DIR?}/instance ]
+then
+    DB2DIR=`/usr/bin/dirname ${DB2DIR?}`
+fi
+cfg_tmp="${DB2DIR?}/cfg/installcopy.cfg"
+cmd_db2fupdt_tmp="${DB2DIR?}/bin/db2fupdt"
+DB2_KEEP_IN_ORIGINAL_DB2DIR="${DB2_KEEP_IN_ORIGINAL_DB2DIR:-FALSE}"
+
+if [ -f "${cfg_tmp?}" -a -f "${cmd_db2fupdt_tmp?}"  -a "X${DB2_KEEP_IN_ORIGINAL_DB2DIR?}" != "XTRUE" ]; then
+   db2dir_tmp=`${cmd_db2fupdt_tmp?} -f ${cfg_tmp?} -p DB2DIR`
+   if [ $? -eq 0 ]; then
+      if [ -d ${db2dir_tmp?} ]; then
+         cd ${db2dir_tmp?} 2>/dev/null 1>/dev/null
+         if [ $? -eq 0 ]; then
+            DB2DIR=`/bin/echo ${db2dir_tmp?} | /usr/bin/sed 's/\/$//'`
+         fi
+     fi
+   fi
+fi 
+cd ${curdir?}
+unset curdir cfg_tmp cmd_db2fupdt_tmp db2dir_tmp DB2_KEEP_IN_ORIGINAL_DB2DIR
+
+PROGNAME=`/usr/bin/basename $0`       # Program name
+
+# show db2diag.log by default
+SHOWLOGFLAG="0"        
+HANDLE_OUTPUT="1"
+STDOUT=""
+STDERR=""
+
+# check for command-line option "-n" and set SHOWLOGFLAG to "1" if found
+if [ $1 = "-n" ]; then
+    SHOWLOGFLAG="1"
+    shift
+fi
+
+# check for command-line option "-o" after the -n option for stderr/stdout handling 
+if [ $1 = "-o" ]; then
+    HANDLE_OUTPUT="0"
+    shift
+    STDOUTERR="$1"
+    STDOUT=`/bin/echo ${STDOUTERR?} | /usr/bin/cut -d":" -f1`
+    if [ $? -ne 0 ]; then
+       /bin/echo "Internale error (db2iexec): failure to extrac stdout from -o option"
+       exit 1
+    fi
+    STDERR=`/bin/echo ${STDOUTERR?} | /usr/bin/cut -d":" -f2`
+    if [ $? -ne 0 ]; then
+       /bin/echo "Internale error (db2iexec): failure to extrac stderr from -o option"
+       exit 1
+    fi
+    if [ "X${STDOUT?}" = "X" -a "X${STDERR?}" = "X" ]; then
+       /bin/echo "Internale error (db2iexec): you have to provide at least stdout or stderr"
+       exit 1
+    fi
+    shift
+fi
+
+INSTNAME=$1
+shift
+
+# Instance home directory
+USERHOME=`${DB2DIR?}/bin/db2usrinf -d ${INSTNAME?}`
+
+# Instance shell
+USERSHELL=`${DB2DIR?}/bin/db2usrinf -s ${INSTNAME?}`
+
+# sqllib
+SQLLIB="sqllib/db2"
+if [ -d ${USERHOME?}/das ]
+then
+    SQLLIB="das/das"
+fi
+
+# either source db2profile or db2cshrc depending on which shell the instance is running
+case ${USERSHELL?} in
+    *csh)
+# C shell is running
+        PROFILE=""
+        if [ -f ${USERHOME?}/${SQLLIB?}cshrc ]; then
+           PROFILE="${PROFILE?} source ${USERHOME?}/${SQLLIB?}cshrc >& /dev/null;"
+        fi
+        if [ ${HANDLE_OUTPUT?} -eq 0 ]; then
+            if [ "X${STDOUT?}" = "X" -a "X${STDERR?}" != "X" ]; then
+                PROFILE="${PROFILE?} sh -c '$* 2>${STDERR?}' "
+            elif  [ "X${STDOUT?}" != "X" -a "X${STDERR?}" = "X" ]; then
+                PROFILE="${PROFILE?} $* >${STDOUT?} "
+            else
+                PROFILE="${PROFILE?} ( $* >${STDOUT?} ) >&${STDERR?} "
+            fi
+        else
+            PROFILE="${PROFILE?} $* "
+        fi
+        ;;
+    *)
+        PROFILE=""
+        if [ -f ${USERHOME?}/${SQLLIB?}profile ]; then
+            PROFILE="${PROFILE?} . ${USERHOME?}/${SQLLIB?}profile 1>/dev/null 2>/dev/null;"
+        fi
+        PROFILE="${PROFILE?} $*"
+        if [ ${HANDLE_OUTPUT?} -eq 0 ]; then
+            if [ "X${STDOUT?}" = "X" -a "X${STDERR?}" != "X" ]; then
+                PROFILE="${PROFILE?} 2> ${STDERR?}"
+            elif  [ "X${STDOUT?}" != "X" -a "X${STDERR?}" = "X" ]; then
+                PROFILE="${PROFILE?} 1> ${STDOUT?}"
+            else
+                PROFILE="${PROFILE?} 1> ${STDOUT?} 2> ${STDERR?}"
+            fi
+        fi
+        ;;
+esac
+
+/usr/bin/su - ${INSTNAME?} -c "${PROFILE?}" 1>/dev/null 2>/dev/null
+return_code=$?
+
+if [ ${SHOWLOGFLAG?} -eq 0 ]; then
+    if [ ${return_code?} -ne 0 ]; then
+        if [ -f ${USERHOME?}/sqllib/db2dump/db2diag.log ]; then
+            /bin/cat ${USERHOME?}/sqllib/db2dump/db2diag.log >&2
+        fi
+    fi
+fi
+
+exit ${return_code?}
+

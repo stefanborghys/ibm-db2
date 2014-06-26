@@ -1,0 +1,1048 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+
+
+
+
+
+#
+# NAME: db2_install
+#
+# FUNCTION: db2_install - Install Full set of db2 packages to specified 
+#                         DB2 location.
+#
+########################################################################
+
+# Options for "set" command
+setopts="${setopts:-+x}"
+
+TRUE=0                     # True variable
+FALSE=1                    # False variable
+export TRUE FALSE
+FIXPACK=${FALSE?}
+PROGNAME=`/usr/bin/basename $0` # Program name
+curdir=`/bin/pwd -P`
+if [ "X$DB2CURDIR" != "X" ]; then
+   TOPDIR=${DB2CURDIR?}
+else
+   TOPDIR=${curdir?}
+fi
+PROGDIR=`/usr/bin/dirname $0`
+cd ${PROGDIR?}
+PROGDIR=`/bin/pwd -P`
+cd ${curdir?}
+
+#-----------------------------------------------------------------------#
+#               Start of function definitions
+#-----------------------------------------------------------------------#
+
+
+
+FORCE_INSTALL=${FALSE?}
+REQ_MET=${TRUE?}
+
+#----------------------------------------------------------------
+# Name       - abort_install_sysreq
+# Function   - Prints the url of the DB2 support web site for
+#              system requirements. 
+#            - Exits installation if there is no -f used in install
+#              scripts or force installation is not allowed. 
+# Parameters - $1 : Optional, any value means that force installation
+#                   is not allowed.
+# Returns    - 0 : Installation can continue
+# Exits      - Installation has to abort with return value 67.
+#----------------------------------------------------------------
+abort_install_sysreq ()
+{
+   setopts="${setopts:-+x}"
+   set ${setopts?}
+   disable_force=$1
+   if [ "X${disable_force?}" != "X" ]; then
+      display_sysreq_web
+   fi
+   if [ ${FORCE_INSTALL?} -ne ${TRUE?} ]; then
+      /bin/echo "  Aborting the current installation ..."
+   fi
+   if [ ${FORCE_INSTALL?} -ne ${TRUE?} -a "X${disable_force?}" = "X" ]; then
+      /bin/echo "  Run installation with the option \"-f sysreq\" parameter to force the installation."
+   fi
+   if [ ${FORCE_INSTALL?} -ne ${TRUE?} -o "X${disable_force?}" != "X" ]; then
+      exit 67
+   fi
+   return 0
+}
+#----------------------------------------------------------------
+# Name       - chk_sysreq
+# Function   - Check if the current system meets the basic system
+#              requiremes needed by DB2 Version 10.1
+# Parameters - none
+# Returns    - 0 : if the system is ok with the requirements
+#                  or FORCE_INSTALL is applicable
+#              67: otherwise
+#----------------------------------------------------------------
+chk_sysreq ()
+{
+   set ${setopts:-+x}
+   RC=0
+   curr_dir=`/bin/pwd -P`
+
+   BINDIR=`/usr/bin/dirname ${PROGDIR?}`/bin
+   PREREQ_LOGFILE="/tmp/db2prereqcheck.log.$$"
+   # this is checked prior to parsing the commandline, so we can't
+   # rely on -d or -t for tracing - instead, we rely on setopts.
+   debug=""
+   case "${setopts}" in
+     *-x*) debug="-d" ;;
+   esac
+
+   cd ${BINDIR?}
+   ./db2prereqcheck -i -o ${PREREQ_LOGFILE?} ${debug?} > /dev/null
+   if [ $? -ne 0 ]
+   then
+       REQ_MET=${FALSE?}
+   fi
+   cd ${curr_dir?}
+}
+
+#----------------------------------------------------------------
+# Name       - chk_sysreq_act
+# Function   - Check if the current system meets the basic system
+#              requiremes needed by DB2 Application Cluster feature
+# Parameters - none
+# Returns    - 0 : if the system is ok with the requirements
+#                  or FORCE_INSTALL is applicable
+#              67: otherwise
+#----------------------------------------------------------------
+chk_sysreq_act ()
+{
+   set ${setopts:-+x}
+   RC=0
+   curr_dir=`/bin/pwd -P`
+
+   BINDIR=`/usr/bin/dirname ${PROGDIR?}`/bin
+   PREREQ_LOGFILE="/tmp/db2prereqcheck.log.$$" 
+   # this is checked prior to parsing the commandline, so we can't
+   # rely on -d or -t for tracing - instead, we rely on setopts.
+   debug=""
+   case "${setopts}" in
+     *-x*) debug="-d" ;;
+   esac
+
+   cd  ${BINDIR?}
+   usenonib=`/bin/echo $DB2USENONIB`
+   if [ "X${usenonib?}" =  "XTRUE" ]; then
+    ./db2prereqcheck -i -n  -o ${PREREQ_LOGFILE?} ${debug?} > /dev/null
+   else
+    ./db2prereqcheck -i -p  -o ${PREREQ_LOGFILE?} ${debug?} > /dev/null
+   fi
+   if [ $? -ne 0 ]
+   then
+       REQ_MET=${FALSE?}
+   fi
+   cd ${curr_dir?}
+}
+
+#----------------------------------------------------------------
+# Name       - chk_sysreq_post
+# Function   - follows the checking done by chk_sysreq to check
+#              if force installation is enabled.
+# Parameters - none
+# Returns    - not applicable
+#----------------------------------------------------------------
+
+chk_sysreq_post ()
+{
+   setopts="${setopts:-+x}"
+   set ${setopts?}
+   if [ ${REQ_MET?} -ne ${TRUE?} ]; then
+      abort_install_sysreq
+   fi
+   if [ ${FORCE_INSTALL?} -eq ${TRUE?} ]; then
+     /bin/echo "  The force option \"-f sysreq\" is used to force the installation ..."
+     /bin/echo
+   fi
+}
+
+#----------------------------------------------------------------
+# Name       - chk_oslevel
+# Function   - Checks if the OS level is supported. Refer wsdbu00912068
+# Parameters - none
+# Returns    - not applicable
+#----------------------------------------------------------------
+
+chk_oslevel ()
+{
+# Variable for OS Checking
+   OSMATCH=1
+   BINDIR=`/usr/bin/dirname ${PROGDIR?}`/bin
+   PREREQ_LOGFILE="/tmp/db2prereqcheck.log.$$"
+# Retrieve the OS level using 'uname' command
+   if [ -x /usr/bin/uname ]; then
+      CMD_UNAME=/usr/bin/uname
+   elif [ -x /bin/uname ]; then
+      CMD_UNAME=/bin/uname
+   fi
+
+# If current OS is AIX, check if its version is 6.1 or above.
+# If AIX OS < 6.1, abort with error message
+   if [ `${CMD_UNAME?}` = "AIX" ]; then
+      if [ `${CMD_UNAME?} -a | cut -d " " -f 4` -lt 6 ] ; then
+         OSMATCH=0 ;
+      fi
+   fi
+
+#SUN Solaris
+   if [ `${CMD_UNAME?}` = "SunOS" ]; then
+      if [ `${CMD_UNAME?} -a | cut -d " " -f 3 | cut -d "." -f 1` -lt 5 ] ; then
+         OSMATCH=0 ;
+      fi
+      if [ `${CMD_UNAME?} -a | cut -d " " -f 3 | cut -d "." -f 2` -lt 9 ] ; then
+         OSMATCH=0 ;
+      fi
+   fi
+
+#HPUX
+   if [ `${CMD_UNAME?}` = "HP-UX" ]; then
+      if [ `${CMD_UNAME?} -a | cut -d " " -f 3 | cut -d "." -f 2` -lt 11 ] ; then
+         OSMATCH=0 ;
+      fi
+      if [ `${CMD_UNAME?} -a | cut -d " " -f 3 | cut -d "." -f 3` -lt 23 ] ; then
+         OSMATCH=0 ;
+      fi
+   fi
+
+# Print error message if the current OS does not match with minimum requirement.
+# re-using the db2prereqcheck message as we had crossed MRI cutoff. Please have a new message in the next release. 
+   if [ ${OSMATCH} -eq 0 ]; then
+      cd ${BINDIR?}
+      ./db2prereqcheck -i  -o ${PREREQ_LOGFILE?} 
+      exit 67
+   fi
+}
+
+   
+
+
+
+
+set_lang_internal ()
+{
+    set ${setopts?}
+    bindir="$1"
+    msgdir="$2"
+    lang="$3"
+
+
+
+
+    CMD_DB2LANGDIR="${bindir?}/db2langdir"
+
+    if [ "X$lang" != "X" ]; then
+       LANG_CUSTOM=0
+    else
+       LANG_CUSTOM=1
+    fi
+    # Default locale name and locale-specific message directory
+    
+    LANG=${LANG:-C}
+    locname=${LANG?}
+    
+    if [ ${LANG_CUSTOM?} -eq 0 ]; then
+       locname=`${CMD_DB2LANGDIR?} ${lang?} -locale`
+       DB2_LANG_JAVA=${locname?}
+    fi
+
+    langdir=`${CMD_DB2LANGDIR?} ${locname?}`
+    clangdir=`${CMD_DB2LANGDIR?} C`
+
+    if [ -f ${msgdir?}/${langdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${langdir?}/db2install.cat"
+        LANGUAGEDIR=${langdir?}
+    elif [ -f ${msgdir?}/${clangdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${clangdir?}/db2install.cat"
+        LANGUAGEDIR=${clangdir?}
+    else
+        /bin/echo "DBI1055E The message file db2install.cat cannot be found."
+        /bin/echo
+        /bin/echo "Explanation:  The message file required by this"
+        /bin/echo "script is missing from the system; it may have been"
+        /bin/echo "deleted or the database products may have been loaded"
+        /bin/echo "incorrectly."
+        /bin/echo
+        /bin/echo "User Response:  Verify that the product option containing"
+        /bin/echo "the message file is installed correctly.  If there are"
+        /bin/echo "verification errors; reinstall the product option."
+        exit 67
+    fi
+
+    # check if the locale exists.  If not, we'll set LANG to C for any
+    # subprocesses.
+    /usr/bin/locale -a 2> /dev/null | grep '^'${locname?}'$' > /dev/null
+    if [ $? -ne 0 ]
+    then
+        locname=C
+    fi
+
+    # if a language was passed in, set LANG - but if not, leave it alone.
+    # (if it isn't a valid language, well, try resetting anyway)
+    if [ ${LANG_CUSTOM?} -eq 0 ]
+    then
+        /usr/bin/locale -a 2> /dev/null | grep '^'${LANG:-C}'$' > /dev/null
+        if [ $? -eq 0 ]; then
+            LANG=${locname?}
+        else 
+            # if locname is valid, set LANG to locname
+            /usr/bin/locale -a 2> /dev/null | grep '^'${locname:-C}'$' > /dev/null
+            if [ $? -eq 0 ]; then
+                LANG=${locname?}
+            fi
+        fi
+    fi
+
+    # Set LANG and NLSPATH variables for use by dspmsg command
+    NLSPATH="${msgdir?}/%L/%N:${msgdir?}/${clangdir?}/%N"
+    SHORTLANG=`${CMD_DB2LANGDIR?} ${LANG:-C} -short`
+
+    export LANG NLSPATH
+}
+
+set_lang ()
+{
+    set ${setopts?}
+    set_lang_internal ${BINDIR?} ${INSTALLER_SOURCE?}/locale $1
+    export SHORTLANG
+
+    YES=`display_msg ${DB2CAT?} 5019 "yes" | /usr/bin/sed -e 's/\r//'`
+    NO=`display_msg ${DB2CAT?} 5020 "no" | /usr/bin/sed -e 's/\r//'`
+}
+
+# To display the function deprecating message.
+display_warning ()
+{
+    set ${setopts?}
+    display_msg ${DB2CAT?} 324 \
+            'DBI1324W Support of the %s command is deprecated. For more information, see the DB2 Information Center.\n' \
+             ${PROGNAME?}
+}
+
+# To display the command syntax
+syntax ()
+{
+
+    display_msg ${DB2CAT?} 45 \
+        "DBI1045I Usage: db2_install [-b <installpath>] [-p <db2producttobeinstalled>] \
+[-c <imagelocation>] [-l <logfile>] [-t <trcFile>] [-n] [-L <language>] [-h|-?]"
+    exit 67
+
+}
+
+generate_response ()
+{
+    set ${setopts?}
+
+    if [ -f ${RSP_FILE?} ]; then
+       /bin/rm ${RSP_FILE?}
+       display_msg ${DB2CAT?} 83 'DBI1083E An attempt to remove %s failed.\n' \
+             ${RSP_FILE?}
+       exit 67
+    fi
+
+
+    for item in ${INSTALLLIST?}
+    do
+        case ${item?} in
+
+            [eE][xX][pP][cC]|[eE][xX][pP][rR][eE][sS][sS]_[cC])
+                PRODUCT="EXPRESS_C" 
+                prod_triggered "${EXPC_triggers?}"
+                if [ $? -ne ${TRUE?} ]; then
+                     display_msg ${DB2CAT?} 60 \
+                        "DBI1060E Invalid product name %s.\n" "${item?}"
+                    exit 67
+                fi
+
+                /bin/echo "PROD=${PRODUCT?}"                 >> ${RSP_FILE?}
+                if [ ${INSTALL_PURESCALE?} -ne ${TRUE?} ]; then
+                    /bin/echo "INSTALL_TYPE=COMPLETE_BASIC"            >> ${RSP_FILE?}
+                else
+                    /bin/echo "INSTALL_TYPE=COMPLETE"            >> ${RSP_FILE?}
+                fi
+                ;;
+
+            *)  display_msg ${DB2CAT?} 60 \
+                        "DBI1060E Invalid product name %s.\n" "${item?}"
+                    exit 67
+                ;;
+        esac
+    done
+
+
+    if [ "X${BASE_DIR?}" != "X" ]; then
+       /bin/echo "FILE=${BASE_DIR?}"               >> ${RSP_FILE?}
+    else
+       /bin/echo "FILE=${install_home?}"           >> ${RSP_FILE?}
+    fi
+
+  /bin/echo "PROGRAM=db2_install"           >> ${RSP_FILE?}
+    for disk in ${PACKAGE_LOCATION?}; do
+        /bin/echo "PACKAGE_LOCATION=${disk?}"      >> ${RSP_FILE?}
+    done
+    if [ ${UPGRADE?} -eq ${TRUE?} ]; then
+       /bin/echo "UPGRADE_PRIOR_VERSIONS=TRUE"     >> ${RSP_FILE?}
+    fi
+    if [ ${IGNORETYPE1?} -eq ${TRUE?} ]; then
+       /bin/echo "UPGRADE_DBCK_IGNORE_TYPE1=YES"   >> ${RSP_FILE?}
+    fi
+    if [ ${BASE_PROMPT?} -eq ${TRUE?} ]; then
+       /bin/echo "INTERACTIVE=YES"                 >> ${RSP_FILE?}
+    else
+       /bin/echo "INTERACTIVE=NONE"                >> ${RSP_FILE?}
+    fi
+    if [ `${PROGDIR?}/../bin/db2usrinf -E` -eq 0 -a \
+         "X${INSTALL_TSAMP?}" != "X" ]; then
+       /bin/echo "INSTALL_TSAMP=${INSTALL_TSAMP?}" >> ${RSP_FILE?}
+    fi
+    /bin/echo "LIC_AGREEMENT=ACCEPT"               >> ${RSP_FILE?}
+    for lg in ${LANG_LIST?}; do
+        /bin/echo "LANG = ${lg?}"                  >> ${RSP_FILE?}
+    done
+}
+
+
+# Default initialization for command execution
+initialization ()
+{
+    set ${setopts?}
+
+
+    install_home=""
+    install_user=""
+
+    SILENT=${TRUE?}
+    DEBUG=${FALSE?}
+    FORCE_INSTALL=${FALSE?}
+    PROD_COUNT=0
+
+
+    BASE_DIR="/opt/IBM/db2/V10.1"  #default
+    INSTALL_TSAMP=""
+    INSTALL_PURESCALE=${FALSE?}
+    PURESCALE_PROMPT_NEEDED=${FALSE?}
+    N_OPTION_PS_PROMPT=${FALSE?}
+
+    BASE_DIR_SPECIFIED=${FALSE?}
+    P_OPTION=${FALSE?}
+    PACKAGE_LOCATION=""
+    DOWNLEVEL_FORCE=${FALSE?}
+    BASE_PROMPT=${TRUE?}
+    UPGRADE=${FALSE?}
+    NOBACKUP=${FALSE?}
+    IGNORETYPE1=${FALSE?}
+    TMPDIR=${DB2TMPDIR:-/tmp}
+    export TMPDIR
+
+    if [ `${PROGDIR?}/../bin/db2usrinf -E` -ne 0 ]; then
+       TMP_USER=`${PROGDIR?}/../bin/db2usrinf -n -E`
+       LOGFILE=${TMPDIR?}/${PROGNAME?}_${TMP_USER?}.log #default
+    else
+       LOGFILE="${TMPDIR?}/${PROGNAME?}.log.$$" #default
+    fi
+
+    REMOTE_HOST=${FALSE?}
+    TRCFILE="" 
+    INSTALLER_SOURCE=${PROGDIR?}
+    TARDIR=${INSTALLER_SOURCE?}
+    RUNLOCATION=${TMPDIR?}/db2.tmp.$$
+    INSTALLER_TOP=${RUNLOCATION?}
+    DB2SETUP_OPTS=""
+    CMD_DB2SETUP=${PROGDIR?}/db2setup
+    BINDIR=${PROGDIR?}/../bin
+    RSP_FILE=${TMPDIR?}/${PROGNAME?}.$$.rsp
+    PRODUCTLIST=""
+    LANG_LIST=""
+    STARS="***********************************************************"
+
+    PATH=".:"${PATH}
+    export PATH
+    LIBPATH_ORG=${LIBPATH}
+    LIBPATH=.:${INSTALLER_SOURCE?}:${LIBPATH}
+    export LIBPATH
+    LD_LIBRARY_PATH_ORG=${LD_LIBRARY_PATH}
+    LD_LIBRARY_PATH=.:${INSTALLER_SOURCE?}:${LD_LIBRARY_PATH}
+    export LD_LIBRARY_PATH
+    SHLIB_PATH_ORG=${SHLIB_PATH}
+    SHLIB_PATH=.:${INSTALLER_SOURCE?}:${SHLIB_PATH}
+    export SHLIB_PATH
+
+    DYLD_LIBRARY_PATH_ORG=${DYLD_LIBRARY_PATH}
+    DYLD_LIBRARY_PATH=.:${INSTALLER_SOURCE?}:${DYLD_LIBRARY_PATH}
+    export DYLD_LIBRARY_PATH
+
+    set_lang
+    display_warning
+
+
+    EXPC_triggers="db2expc_uw.lic db2expc_beta.lic db2exp_sftl.lic db2exp_uftl.lic"
+
+
+
+
+}
+
+# Reset the related LIB path to the original ones
+reset_path ()
+{
+    set ${setopts?}
+
+    if [ "X$LIBPATH_ORG" = "X" ]; then
+      unset LIBPATH
+    else
+      LIBPATH=${LIBPATH_ORG?}
+      export LIBPATH
+    fi
+    if [ "X$LD_LIBRARY_PATH_ORG" = "X" ]; then
+      unset LD_LIBRARY_PATH
+    else
+      LD_LIBRARY_PATH=${LD_LIBRARY_PATH_ORG?}
+      export LD_LIBRARY_PATH
+    fi
+    if [ "X$LD_LIBRARY_PATH_64_ORG" = "X" ]; then
+      unset LD_LIBRARY_PATH_64
+    else
+      LD_LIBRARY_PATH_64=${LD_LIBRARY_PATH_64_ORG?}
+      export LD_LIBRARY_PATH_64
+    fi
+    if [ "X$SHLIB_PATH_ORG" = "X" ]; then
+      unset SHLIB_PATH
+    else
+      SHLIB_PATH=${SHLIB_PATH_ORG?}
+      export SHLIB_PATH
+    fi
+}
+
+
+
+# Check if absolute path is given
+chk_abs_path ()
+{
+   set ${setopts?}
+   file_path=$1
+   /bin/echo ${file_path?} | /usr/bin/grep '^/' 2>&1 1>/dev/null
+   return $?
+}
+#Set instance environment for non-root installers
+set_nr_instance_env ()
+{
+    set ${setopts?}
+
+    if [ $# -ne 1 ]; then
+       /bin/echo "Usage set_nr_instance_env <full path of db2usrinf>"
+       exit 67
+    fi
+    db2usrinf_cmd=$1
+    if [ ! -f "${db2usrinf_cmd?}" ]; then
+       /bin/echo "Usage set_nr_instance_env <full path of db2usrinf>"
+       exit 67
+    fi
+
+    install_user=`${db2usrinf_cmd?} -n -E`
+    install_home=`${db2usrinf_cmd?} -d ${install_user?}`
+
+    if [ "X${install_user?}" = "X" ]; then
+      display_msg ${DB2CAT?} 131 \
+          "DBI1131E The user ID %s is invalid.\n" ${install_user?}
+      exit 67
+    fi
+    if [ ! -d "${install_home?}" ]; then
+      display_msg ${DB2CAT?} 95\
+          "DBI1095W The file or directory %s cannot be found.\n" ${install_home?}
+      exit 67
+    fi
+
+    cd ${install_home?}
+    install_home=`/bin/pwd -P`
+    install_home="${install_home?}/sqllib"
+
+    if [ -d "${install_home?}/.metadata" -a -f "${install_home?}/db2profile" ]; then
+          . ${install_home?}/db2profile
+    fi
+}
+
+# Check if root is running the prog
+chk_root ()
+{
+    set ${setopts?}
+    if [ `${INSTALLER_SOURCE?}/../bin/db2usrinf -E` -ne 0 ]; then
+        display_msg ${DB2CAT?} 52 \
+            'DBI1052E You must be root to execute this program.\n'
+        exit 67
+    fi
+}
+
+#-----------------------------------------------------------------------
+# Name       - prod_triggered
+# Function   - check if a product trigger file is found
+# Parameters - $1 - list of trigger files
+# Return     - 0 if a trigger is found, 1 otherwise
+#-----------------------------------------------------------------------
+prod_triggered ()
+{
+    set ${setopts?}
+    t_list=$1
+    cd ${PROGDIR?}/../../../db2/license
+    prod_triggered_rc=${FALSE?}
+    for f in ${t_list?}; do
+        if [ -f "${f?}" ]; then
+           prod_triggered_rc=${TRUE?}
+        fi
+    done
+    cd ${curdir?} 
+    return ${prod_triggered_rc?}
+}
+
+#-----------------------------------------------------------------------
+# Name       - display_msg
+# Function   - Displays a message from the message catalog
+# Parameters - $1 - name of the message catalog
+#            - $2 - message number
+#            - $3 - default message string
+#            - $4,$5,$6 - arguments to substitute in msg string, if needed
+#-----------------------------------------------------------------------
+display_msg()
+{
+    set ${setopts?}
+
+    unset catname msgid deftmsg msgstr
+    catname="$1"
+    msgid=$2
+    deftmsg="$3"
+
+    shift;shift;shift
+
+    ${BINDIR?}/disp_msg 1 ${msgid} ${catname} "${deftmsg?}" "$@" 2>&1
+ 
+} 
+
+
+set_options ()
+{
+   set ${setopts?}
+
+   DB2SETUP_OPTS=" -l ${LOGFILE?} "
+
+   DB2SETUP_OPTS=" ${DB2SETUP_OPTS?} -r ${RSP_FILE?} "
+   
+   if [ "X${TRCFILE?}" != "X" ]; then
+       DB2SETUP_OPTS="${DB2SETUP_OPTS?} -t ${TRCFILE?} "
+   fi
+
+   if [ ${DEBUG?} -eq ${TRUE?} ]; then
+      DB2SETUP_OPTS="${DB2SETUP_OPTS?} -d "
+   fi
+
+   if [ ${FORCE_INSTALL?} -eq ${TRUE?} ]; then
+      DB2SETUP_OPTS="${DB2SETUP_OPTS?} -f sysreq "
+   fi 
+
+   if [ ${NOBACKUP?} -eq ${TRUE?} ]; then
+      DB2SETUP_OPTS="${DB2SETUP_OPTS?} -f nobackup "
+   fi 
+
+   if [ ${REMOTE_HOST?} -eq ${TRUE?} ]; then
+      DB2SETUP_OPTS="${DB2SETUP_OPTS?} -R "
+   fi
+
+}
+
+# Yes-or-No: Loops until a "y" or "n" is entered
+yesOrno()
+{
+    set ${setopts?}
+
+    question=${1:-"yes or no"}
+    response="junk"
+    /bin/echo "${STARS?}"
+    while [ "${response?}" != "${YES?}" -a "${response?}" != "${NO?}" ]; do
+        /bin/echo "${question?}"
+        read response
+    done
+} # end of yesOrno()
+
+
+# Displays a list of installable products
+display_prodlist()
+{
+    set ${setopts?}
+
+    PRODLIST=""
+
+    prod_triggered "${EXPC_triggers?}"
+    if [ $? -eq ${TRUE?} ]; then
+       PRODLIST="${PRODLIST?} EXPC "
+    fi
+
+
+    if [ "X${PRODLIST?}" = "X" ]; then
+       display_msg ${DB2CAT?} 217  'DBI1217E There is not valid product trigger file found for any of the following products\n'
+
+       /bin/echo "   EXPC"
+
+
+       exit 67
+    fi
+
+    for PROD in ${PRODLIST?}
+    do
+        /bin/echo "  ${PROD?} "
+    done
+
+    /bin/echo " "
+
+} # end of display_prodlist()
+
+# Check whether user provided proper products/packages to install
+verify_installlist()
+{
+    for item in ${INSTALLLIST?}
+    do
+        case ${item?} in
+
+            [eE][xX][pP][cC]|[eE][xX][pP][rR][eE][sS][sS]_[cC])
+                PRODUCT="EXPRESS_C" 
+                prod_triggered "${EXPC_triggers?}"
+                if [ $? -ne ${TRUE?} ]; then
+                     display_msg ${DB2CAT?} 60 \
+                        "DBI1060E Invalid product name %s.\n" "${item?}"
+                    exit 67
+                fi
+                ;;
+
+            *)  display_msg ${DB2CAT?} 60 \
+                        "DBI1060E Invalid product name %s.\n" "${item?}"
+                    exit 67
+                ;;
+        esac
+    done
+}
+
+# Asks user which products/packages to install and create the package list
+get_pkglist()
+{
+    set ${setopts?}
+
+    ok=${FALSE?}
+
+    if [ -z "${INSTALLLIST}" ]
+    then
+        while [ ${ok?} -eq ${FALSE?} ]; do 
+            /bin/echo " "
+            /bin/echo " "
+            display_msg ${DB2CAT?} 5007 \
+                "Specify one of the following keywords to install DB2 product.\n"
+            display_prodlist
+            display_msg ${DB2CAT?} 5008 \
+                "Enter \"help\" to redisplay product names.\n"
+            display_msg ${DB2CAT?} 5009 "Enter \"quit\" to exit.\n"
+            helpmsg=`display_msg ${DB2CAT?} 5017 "help"`
+            quitmsg=`display_msg ${DB2CAT?} 5018 "quit"`
+            /bin/echo "${STARS?}"
+            read INSTALLLIST
+
+            if [ "${INSTALLLIST?}" = "${helpmsg?}" ]; then
+                :     # Do nothing
+            elif [ "${INSTALLLIST?}" = "" ]; then
+                display_msg ${DB2CAT?} 5011 \
+                    "You must select at least one product to install.\n"
+                display_msg ${DB2CAT?} 5009 "Enter "quit" to exit.\n"
+            elif [ "${INSTALLLIST?}" = "${quitmsg?}" ]; then
+                display_msg ${DB2CAT?} 5004 "No products installed.\n"
+                exit 2
+            else
+                ok=${TRUE?}
+                # INSTALLLIST is OK to send to rspfile
+
+                KEYWORD_COUNT=`/bin/echo $INSTALLLIST | /usr/bin/wc -w`
+                # Error if more than 1 product selected, i.e. "ESE RTCL"
+                if [ ${KEYWORD_COUNT?} -gt 1 ]; then
+                  ok=${FALSE?}
+                  display_msg ${DB2CAT?} 60 \
+                        "DBI1060E Invalid product name %s.\n" "${INSTALLLIST?}"
+                fi
+            fi
+        done
+    fi
+
+    verify_installlist
+
+
+}
+
+
+
+sh_which_ ()
+{
+    set ${setopts?}
+
+    file=$1
+    search_path=$2
+    if [ -z "${search_path?}" ]
+    then
+      search_path="$PATH"
+    fi
+    /bin/echo ${search_path?} | /usr/bin/sed -e 's/:/\
+/g' | while read path; do
+    if [ -x "${path?}/${file?}" ]
+    then
+        /bin/echo "${path?}/${file?}"
+        return 0
+    fi
+    done
+}
+
+sh_which ()
+{
+    set ${setopts?}
+    text=`sh_which_ "$@"`
+    # set return code based on whether there is any output.
+    if [ -z "${text?}" ]
+    then
+        return 1
+    else
+        echo "${text?}"
+        return 0
+    fi
+}
+
+check_gunzip ()
+{
+    set ${setopts?}
+    sh_which gunzip > /dev/null
+    if [ $? -ne 0 ]
+    then
+        display_msg ${DB2CAT?} 58 "DBI1058E gunzip command not found."
+        exit 67
+    fi
+}
+
+#-----------------------------------------------------------------------#
+#                End of function definitions
+#-----------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------#
+#                             Main program
+#-----------------------------------------------------------------------#
+
+set ${setopts?}
+
+chk_oslevel
+chk_sysreq
+
+initialization # Set up environment for DB2 Installer
+
+check_gunzip   # ensure gunzip is available
+
+# Process command-line options
+while getopts :b:c:L:l:t:p:f:dmhnR optchar; do
+            case ${optchar?} in
+                b)  # specified install location
+                    BASE_DIR=${OPTARG?}
+                    BASE_DIR_SPECIFIED=${TRUE?}
+                    chk_abs_path ${BASE_DIR?}
+                    if [ $? -ne ${TRUE?} ]; then
+                        syntax
+                    fi
+                    ;;
+                c)  # Other CD locations
+                    TMP_LOC=${OPTARG?};
+                    chk_abs_path ${TMP_LOC?}
+                    if [ $? -ne ${TRUE?} ]; then
+                        syntax
+                    fi
+                    if [ "X${PACKAGE_LOCATION?}" = "X" \
+                      -o "X${PACKAGE_LOCATION?}" = "X " ]; then
+                        PACKAGE_LOCATION="${TMP_LOC?} "
+                    else
+                        PACKAGE_LOCATION="${PACKAGE_LOCATION?} ${TMP_LOC?} "
+                    fi
+                    ;;
+                L)  # Additional LANG's
+                    LANG_LIST="${LANG_LIST?} ${OPTARG?}"
+                    ;;
+                m)  # Add UPGRADE_PRIOR_VERSIONS=YES in the response file.
+                    UPGRADE=${TRUE?}
+                    ;;
+                n)  # Non-Interactive mode
+                    BASE_PROMPT=${FALSE?}
+                    N_OPTION_PS_PROMPT=${TRUE?}
+                    ;;
+                l)  # customized log file name and/or location
+                    if [ -z "${OPTARG?}" ]
+                    then
+                        syntax
+                    fi
+                    LOGFILE="${OPTARG?}"
+                    # Check if absolute path was given
+                    chk_abs_path ${LOGFILE?}
+                    if [ $? -ne ${TRUE?} ]; then
+                        LOGFILE="${TOPDIR?}/${LOGFILE?}"
+                    fi
+                    ;;
+                t)  # customized trace file name and/or location
+                    if [ -z "${OPTARG?}" ]
+                    then
+                        syntax
+                    fi
+                    TRCFILE="${OPTARG?}"
+                    # Check if absolute path was given
+                    chk_abs_path ${TRCFILE?}
+                    if [ $? -ne ${TRUE?} ]; then
+                       TRCFILE="${TOPDIR?}/${TRCFILE?}"
+                    fi
+                    ;;
+                p)  # product was specified
+                    INSTALLLIST="${OPTARG?}"
+                    PROD_COUNT=`expr $PROD_COUNT + 1`
+                    if [ ${PROD_COUNT?} -gt 1 ]; then
+                       syntax
+                    fi
+                    P_OPTION=${TRUE?}
+                    ;;
+                d)  # debug mode used for IBM Support
+                    DEBUG=${TRUE?}
+                    setopts="-x"
+                    ;;
+                f)  # Internal flag, used as instructed
+                    TMP_FORCE=${OPTARG?}
+                    if [ "X${TMP_FORCE?}" = "Xsysreq" ]; then
+                       FORCE_INSTALL=${TRUE?}
+                    elif [ "X${TMP_FORCE?}" = "XNOTSAMP" ]; then
+                       INSTALL_TSAMP="NO"
+
+                    elif [ "X${TMP_FORCE?}" = "Xnobackup" ]; then
+                       NOBACKUP=${TRUE?} 
+                 # Add UPGRADE_DBCK_IGNORE_TYPE1=YES in the response file.
+                    elif [ "X${TMP_FORCE?}" = "XignoreType1" ]; then
+                       IGNORETYPE1=${TRUE?} 
+                    else
+                       syntax
+                    fi
+                    ;;
+                 R) # internal flag
+                    REMOTE_HOST=${TRUE?}
+                    ;;
+                h|?)  # Display help
+                    syntax 
+                    ;;
+            esac
+done
+shift `expr $OPTIND - 1` # Delete all option args
+set ${setopts?}
+
+if [ "X${LOGFILE?}" != "X" -a "X${TRCFILE?}" != "X" ]; then
+if [ "X${LOGFILE?}" = "X${TRCFILE?}" ]; then
+   syntax
+fi
+fi
+
+if [ "X$1" != "X" -a ${BASE_PROMPT?} -ne ${TRUE?} ]; then
+   syntax
+fi        
+
+#FIXME --msg
+if [ "${INSTALL_TSAMP?}" = "NO" -a ${INSTALL_PURESCALE?} -eq ${TRUE?} ]; then
+     display_msg ${DB2CAT?} 476 \
+     "DBI1476E Incorrect syntax, the db2_install command options -f NOTSAMP and -f PURESCALE are mutually exclusive."
+     syntax
+     exit 67
+fi
+
+chk_sysreq_post
+
+
+if [ `${PROGDIR?}/../bin/db2usrinf -E` -eq 0 ]; then
+   if [ ${BASE_PROMPT?} -ne ${TRUE?} ]; then
+      if [ ${BASE_DIR_SPECIFIED?} -eq ${FALSE?} -o ${P_OPTION?} -eq ${FALSE?} ]; then
+       syntax
+      fi
+   fi
+
+else
+
+   set_nr_instance_env "${PROGDIR?}/../bin/db2usrinf"
+   if [ ${BASE_DIR_SPECIFIED?} -ne ${TRUE?} ]; then
+      BASE_DIR=${install_home?}
+   fi
+   cd ${curdir?}
+fi
+
+
+
+if [ "X${install_home?}" = "X" -a ${BASE_PROMPT?} -eq ${TRUE?} -a ${BASE_DIR_SPECIFIED?} -ne ${TRUE?} ]; then
+
+    /bin/echo " "
+    display_msg ${DB2CAT?} 5012 \
+        "Default directory for installation of products - %s\n" \
+        "${BASE_DIR?}"
+ 
+    ques=`display_msg ${DB2CAT?} 5021 \
+	"Install into default directory (%s) [yes/no]?\n" \
+        "${BASE_DIR}"`
+        
+    yesOrno "${ques?}"
+    newdir="${response?}"
+
+    if [ "${newdir?}" = "${NO?}" ]; then
+       display_msg ${DB2CAT?} 5014 \
+       "Enter full path name for the install directory -\n"
+       /bin/echo "------------------------------------------------"
+       read BASE_DIR
+       chk_abs_path ${BASE_DIR?}
+       if [ $? -ne ${TRUE?} ]; then
+          syntax
+       fi
+       /bin/echo ${BASE_DIR?} | /usr/bin/grep ' ' 1>/dev/null 2>/dev/null
+       if [ $? -eq ${TRUE?} ]; then
+          display_msg ${DB2CAT?} 245 \
+             "DBI1245E: One or more space characters were found in the specified DB2 \
+installation path %s, which is not supported.\n" ${BASE_DIR?}          
+          exit 67
+       fi
+    fi
+
+elif [ "X${install_home?}" != "X" ]; then
+    display_msg ${DB2CAT?} 244 \
+        "DBI1244I  Directory for non-root installation of DB2 - %s\n" \
+        "${install_home?}"
+
+fi
+
+
+if [ -z "${INSTALLLIST}" ]; then
+   INSTALLLIST=expc
+fi
+
+
+get_pkglist
+
+set_options
+
+
+
+generate_response    # create response file
+
+
+reset_path
+exec ${CMD_DB2SETUP?} ${DB2SETUP_OPTS?} -w
+

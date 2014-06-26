@@ -1,0 +1,12 @@
+arch=i386
+baseptf=DARWIN64
+bldlevel=20120905
+ext_buildlevel=s120905
+fixpack=0
+interim=
+minimum_version=10.1.0.0
+os=Darwin
+ptf=DARWIN64101
+sb=0
+specialbuild=
+vrmf=10.1.0.0

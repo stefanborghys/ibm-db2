@@ -1,0 +1,179 @@
+********************************************************************************
+*
+* Documentation on the message protocol
+*
+* Last update: April 2006
+*
+* This document describes the two types of messages that can be sent out by the
+* installer when a response file is used, and the protocol that is used.
+*
+********************************************************************************
+*
+* INTERACTIVE MODE AND MESSAGE TYPES
+*
+* The DB2 installer can send out messages related to the install via streams.
+* When these streams are enabled, the response file will be interactive.
+*
+* In interactive mode, the installer will give progress outputs as the install
+* progresses and prompt the user for cd paths if any required cds are not
+* found.
+*
+* Two types of stream output exist: human-readable and machine-readable.
+*
+* Human-readable: the installer will output messages related to the install 
+* in human-readable form to the standard output.
+*
+* To enable this mode, set the following keyword in the response file: 
+* INTERACTIVE = YES
+*
+* Machine-readable: the installer will output messages related to the install 
+* in machine-readable form to the standard output.
+*
+* To enable this mode, set the following keyword in the response file:
+* INTERACTIVE = MACHINE
+*
+* The default type that is used if the keyword is not specified is NONE,
+* which means that no type of stream communication will be enabled.
+*
+********************************************************************************
+*
+* HUMAN-READABLE OUTPUT
+*
+* The purpose of the human-readable format is to receive progress updates and 
+* interact with the installer through the console.  The messages are sent to the 
+* standard output in human-readable format, therefore no external clients are 
+* required to parse the messages sent out by the installer.
+*
+********************************************************************************
+*
+* MACHINE-READABLE OUTPUT
+*
+* The purpose of the machine-readable format is to establish a communication
+* stream between the installer and an external client.  Messages are sent out in
+* a specific message format onto a pre-determined stream(standard output) to
+* the external client and the external client can communicate with the installer
+* through the installer's input stream(standard input).
+*
+********************************************************************************
+*
+* MESSAGE FORMAT(machine-readable)
+*
+* Every message from the installer is in the following format:
+*
+*   <Header> [:: <Data field 1> :: <Data field 2> :: ... :: <Data field n>]\n,
+*
+* where the header looks like the following:
+*
+*   <FAMILY GROUP TYPE>.
+*
+* The header determines the message type, and the optional data fields contain 
+* data that is expected to arrive for each message types.  All the messages are 
+* delimited with a newline, therefore they do not exceed a single line.
+*
+********************************************************************************
+*
+* MESSAGE HEADER TYPES
+*
+* The message types are presented in the following format:
+*
+*  ----------------
+* |     FAMILY     |
+* |----------------|
+* |        |       |
+* | GROUPS | TYPES |
+* |        |       |
+*  ---------------- 
+*
+* The two families of messages are classified as shown below:
+*
+*  --------------------------
+* |          PROGRESS        |
+* |--------------------------|
+* | TASK    | START          |
+* |         | END            |
+* |--------------------------|
+* | INFO    | TASKCOUNT      |
+* |         | TASKTIMES      |
+*  -------------------------- 
+*
+*  --------------------------
+* |          MESSAGE         |
+* |--------------------------|
+* | INFO    | INSTALLSTART   |
+* |         | INSTALLEND     |
+* |--------------------------|
+* | QUERY   | CDPATH         |
+* |--------------------------|
+* | WARNING | GENERAL        |
+* |--------------------------|
+* | ERROR   | CDNOTFOUND     |
+* |         | GENERAL        |      
+*  --------------------------
+*
+********************************************************************************
+*
+* SPECIFIC MESSAGE FORMATS
+*
+* The messages are presented in the following format:
+*
+* <header> :: <data field 1>
+*          :: <data field 2>
+*          ::      ...
+*          :: <data field n>
+*
+* Note: The data fields are presented on different lines, but the installer will
+*       send out the fields on a single line. 
+*
+* 
+* These are the formats of the messages that can be sent out by the installer:
+*
+* PROGRESS TASK START :: <task type> 
+*                     :: <estimated task time(seconds)> 
+*                     :: <task id> 
+*                     :: <default task description>
+*
+* PROGRESS TASK END :: <task type>
+*                   :: <task id>
+*                   :: <default task description>
+*
+* PROGRESS INFO TASKCOUNT :: <number of tasks>
+*
+* PROGRESS INFO TASKTIMES :: <task time 1>
+*                         :: <task time 2>
+*                         ::     ...
+*                         :: <task time n>
+*
+* MESSAGE INFO INSTALLSTART
+*
+* MESSAGE INFO INSTALLEND :: <path to logfile>
+*
+* MESSAGE QUERY CDPATH :: <volume label>
+*                      :: <default path>
+*
+* MESSAGE ERROR CDNOTFOUND :: <default error message>
+*
+* MESSAGE ERROR GENERAL :: <error message>
+*
+********************************************************************************
+*
+* CLIENT MESSAGES(machine-readable)
+*
+* There is one group of installer message that the client must respond to, which
+* is the MESSAGE QUERY group.  The client must respond with one of the following
+* messages:
+*
+* RESPONSE :: <response to query>
+*
+* ABORT
+*
+* If the ABORT message is sent, the installer will stop the install process,
+* rollback the install process, and exit cleanly.
+*
+********************************************************************************
+*
+* SAMPLE PROGRAMS
+*
+* Please refer to db2/samples on the DB2 install CD for sample programs in 
+* different languages that will parse the machine-readable outputs.
+*
+********************************************************************************

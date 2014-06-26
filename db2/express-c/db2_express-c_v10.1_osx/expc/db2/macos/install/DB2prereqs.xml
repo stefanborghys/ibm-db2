@@ -1,0 +1,536 @@
+<?xml version="1.0"?>
+<DB2PrereqCheckXML>
+  <DB2Level value="10.1.0.0">
+   <platform value="AIX">
+     <MinOSVersion>6</MinOSVersion>
+     <MinOSRelease>1</MinOSRelease>
+     <TLSP value="OSVersion = 6 OSRelease = 1">
+     <MinTL>6</MinTL>
+     <MinSP>5</MinSP>
+     </TLSP>
+     <TLSP value="OSVersion = 7 OSRelease = 1">
+       <MinTL>0</MinTL>
+       <MinSP>3</MinSP>
+     </TLSP>
+     <xlcPackage>
+      <xlcPackageName>xlC.rte</xlcPackageName>
+      <xlcLabel>XL C/C++ Runtime</xlcLabel>
+      <xlcVersion>11</xlcVersion>
+      <xlcMajorRelease>1</xlcMajorRelease>
+      <xlcMinorRelease>0</xlcMinorRelease>
+      <xlcMinorRelease2>1</xlcMinorRelease2>
+     </xlcPackage>
+     <uDAPLLabel>uDAPL</uDAPLLabel>
+     <uDAPLPackage>udapl.rte</uDAPLPackage>
+     <uDAPL>
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>6</uDAPLMinorRel>
+          <uDAPLMinorRel2>15</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 7 OSRelease = 1">
+          <uDAPLVersion>7</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>15</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 6 OSRelease = 1 TL = 6 SP = 5">
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>6</uDAPLMinorRel>
+          <uDAPLMinorRel2>15</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 7 OSRelease = 1 TL = 0 SP = 3">
+          <uDAPLVersion>7</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>15</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 6 OSRelease = 1 TL = 7 SP = 1">
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>7</uDAPLMinorRel>
+          <uDAPLMinorRel2>0</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 7 OSRelease = 1 TL = 1 SP = 1">
+          <uDAPLVersion>7</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>1</uDAPLMinorRel>
+          <uDAPLMinorRel2>0</uDAPLMinorRel2>
+     </uDAPL>
+     <pureCluster>
+         <MinOSVersion>6</MinOSVersion>
+         <MinOSRelease>1</MinOSRelease>
+     </pureCluster>
+   </platform>
+   <platform value="Linux">
+      <MinOSVersion>2</MinOSVersion>
+      <MinOSRelease>6</MinOSRelease>
+      <MinOSMinorRelease>16</MinOSMinorRelease>
+      <MinRHELVersion>5</MinRHELVersion>
+      <MinRHELSP>6</MinRHELSP>
+      <RHELRelease>5.6.0.3</RHELRelease>
+      <RHELReleasePackage>redhat-release</RHELReleasePackage>
+      <RHELReleaseVersion>5</RHELReleaseVersion>
+      <MinSLESVersion>10</MinSLESVersion>
+      <MinSLESSP>3</MinSLESSP>
+      <SLESRelease>15.45.8</SLESRelease>
+      <SLESReleasePackage>sles-release</SLESReleasePackage>
+      <SLESReleaseVersion>10</SLESReleaseVersion>
+      <MinUBUNTUVersion>10.04</MinUBUNTUVersion>
+      <CPPVersionString>CXXABI_1.3.1</CPPVersionString>
+      <CPPLibName>libstdc++.so.6</CPPLibName>
+      <LibCVersion>2</LibCVersion>
+      <LibCMajorRelease>4</LibCMajorRelease>
+      <LibCMinorRelease>0</LibCMinorRelease>
+      <xlcPackage value="Processor = LinuxPPC64">
+         <xlcLibName>/opt/ibmcmp/lib64/libibmc++.so.1</xlcLibName>
+         <xlcVersion>11</xlcVersion>
+         <xlcMajorRelease>1</xlcMajorRelease>
+         <xlcMinorRelease>0</xlcMinorRelease>
+         <xlcMinorRelease2>1</xlcMinorRelease2>
+      </xlcPackage>
+      <TSACPPName>/usr/lib/libstdc++.so.5</TSACPPName>
+      <ofedPackage>ofed</ofedPackage>
+      <ofedVersion>1.5.2</ofedVersion>
+      <libIBIBVERBSPackage>libibverbs</libIBIBVERBSPackage>
+      <libIBVERBSVersion>1.1.2</libIBVERBSVersion>
+      <gccPackage>gcc</gccPackage>
+      <binUtilsPackage>binutils</binUtilsPackage>
+      <cppPackage>cpp</cppPackage>
+      <gccCPPPackage>gcc-c++</gccCPPPackage>
+      <kernelSourcePackage>kernel-source</kernelSourcePackage>
+      <kernelDevelPackage>kernel-devel</kernelDevelPackage>
+         <uDAPL>
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>1.2.7</uDAPLVersion>
+         </uDAPL>
+         <uDAPL value="LinuxDistro = RHEL">
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>2.0.25</uDAPLVersion>
+          </uDAPL>
+          <uDAPL value="LinuxDistro = SUSE">
+            <uDAPLPackage>dapl2</uDAPLPackage>
+            <uDAPLVersion>2.0.30</uDAPLVersion>
+         </uDAPL>
+      <pureCluster>
+         <RHEL value="LinuxDistro = RHEL MHCA = TRUE">
+           <MinRHELVersion>6</MinRHELVersion>
+           <MinRHELSP>1</MinRHELSP>
+         </RHEL>
+         <CommonInfinibandSupportPackage value="LinuxDistro = RHEL RHELVersion = 6 RHELSP >= 1" >
+            <libIBConnectionMgr>libibcm</libIBConnectionMgr>
+            <libRDMAConnectionMgr>librdmacm</libRDMAConnectionMgr>
+            <libRDMAModuleInitializer>rdma</libRDMAModuleInitializer>
+            <libIBFabricSimulator>ibsim</libIBFabricSimulator>
+            <libIBDiagnosticTools>ibutils</libIBDiagnosticTools>
+            <libChelsioHCAUsrspace>libcxgb3</libChelsioHCAUsrspace>
+            <libOpenFabricsMAD>libibmad</libOpenFabricsMAD>
+            <libOpenFabricsUsrMAD>libibumad</libOpenFabricsUsrMAD>
+            <libQLogicInfiniPathHCA>libipathverbs</libQLogicInfiniPathHCA>
+            <libIBHCAUserspace>libmthca</libIBHCAUserspace>
+            <libNetEffectRNICUserspace>libnes</libNetEffectRNICUserspace>
+         </CommonInfinibandSupportPackage>
+         <HighPerformancePackage value="LinuxDistro = RHEL RHELVersion = 6 RHELSP >= 1 HCANetwork = 10GE">
+            <libUsrSpaceRDMA>libibverbs-rocee</libUsrSpaceRDMA>
+            <libConnectXHCAUsrSpace>libmlx4-rocee</libConnectXHCAUsrSpace>
+         </HighPerformancePackage>
+         <InfinibandSupportPackage value="LinuxDistro = RHEL RHELVersion = 6 RHELSP >= 1 HCANetwork = InfiniBand">
+            <libUsrSpaceRDMA>libibverbs</libUsrSpaceRDMA>
+            <libConnectXHCAUsrSpace>libmlx4</libConnectXHCAUsrSpace>
+         </InfinibandSupportPackage>
+         <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         <sg3UtilsPackage value="LinuxDistro = RHEL RHELVersion = 5 ">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 11">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 3">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 4">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sgPersistPackageName>sg_persist</sgPersistPackageName>
+      </pureCluster>
+   </platform>
+   <platform value="Darwin">
+      <MinOSVersion>9</MinOSVersion>
+      <MinOSRelease>2</MinOSRelease>
+      <MinOSMinorRelease>6</MinOSMinorRelease>
+   </platform>
+   <platform value="HPUX">
+      <MinOSVersion>11</MinOSVersion>
+      <MinOSRelease>31</MinOSRelease>
+      <QPKApps>QPKAPPS</QPKApps>
+      <QPKAppsVersion>11.31.0909</QPKAppsVersion>
+      <QPKBase>QPKBASE</QPKBase>
+      <QPKBaseVersion>11.31.0909</QPKBaseVersion>
+      <PHKLPatches value="OSVersion = 11 OSRelease = 31">
+        <PHKLPatch_1>PHKL_41481</PHKLPatch_1>
+        <PHKLPatch_2>PHKL_42035</PHKLPatch_2>
+        <PHKLPatch_3>PHKL_42335</PHKLPatch_3>
+        <PHKLPatch_4>PHKL_41588</PHKLPatch_4>
+      </PHKLPatches>
+   </platform>
+   <platform value="SUN">
+      <MinOSVersion>5</MinOSVersion>
+      <MinOSRelease>10</MinOSRelease>
+      <OSUpdateVersion>9</OSUpdateVersion> 
+      <wLibC>SUNWlibC</wLibC>
+      <wLibCPatch>119963</wLibCPatch>
+      <MinwLibCPatch>20</MinwLibCPatch>
+      <SunOS value="Processor = SUNAMD">
+        <wLibCPatch>119964</wLibCPatch>
+        <MinwLibCPatch>20</MinwLibCPatch>
+      </SunOS>
+   </platform>
+   <platform value="Windows">
+      <WinFutureVersionName>Windows Future Release</WinFutureVersionName>
+      <WinFutureSP>0</WinFutureSP>
+      <WinXPProVersionName>Windows XP Pro</WinXPProVersionName>
+      <WinXPHomeVersionName>Windows XP Home</WinXPHomeVersionName>
+      <WinWNetVersionName>Windows 2003</WinWNetVersionName>
+      <WinWNetSP>2</WinWNetSP>
+      <WinXPVersionName>Windows XP</WinXPVersionName>
+      <WinXPSP>3</WinXPSP>
+      <WinVistaVersionName>Windows Vista</WinVistaVersionName>
+      <WinVistaSP>2</WinVistaSP>
+      <Win7VersionName>Windows 7</Win7VersionName>
+      <Win7SP>1</Win7SP>
+      <Win2008VersionName>Windows 2008</Win2008VersionName>
+      <Win2008SP>2</Win2008SP>
+   </platform>
+  </DB2Level>
+  <DB2Level value="9.8.0.4">
+   <platform value="AIX">
+     <MinOSVersion>5</MinOSVersion>
+     <MinOSRelease>3</MinOSRelease>
+     <MinTL>9</MinTL>
+     <MinSP>0</MinSP>
+     <TLSP value="Processor = POWER6 OSVersion = 6 OSRelease = 1">
+      <MinTL>3</MinTL>
+      <MinSP>3</MinSP>
+     </TLSP>
+     <TLSP value="Processor = POWER7 OSVersion = 6 OSRelease = 1">
+      <MinTL>4</MinTL>
+      <MinSP>3</MinSP>
+     </TLSP>
+     <xlcPackage>
+      <xlcPackageName>xlC.rte</xlcPackageName>
+      <xlcLabel>XL C/C++ Runtime</xlcLabel>
+      <xlcVersion>9</xlcVersion>
+      <xlcMajorRelease>0</xlcMajorRelease>
+      <xlcMinorRelease>0</xlcMinorRelease>
+      <xlcMinorRelease2>12</xlcMinorRelease2>
+     </xlcPackage>
+     <uDAPLLabel>uDAPL</uDAPLLabel>
+     <uDAPLPackage>udapl.rte</uDAPLPackage>
+     <uDAPL>
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>2</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 6 OSRelease = 1">
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>6</uDAPLMinorRel>
+          <uDAPLMinorRel2>0</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 7 OSRelease = 1">
+          <uDAPLVersion>7</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>1</uDAPLMinorRel2>
+     </uDAPL>
+     <pureCluster>
+         <MinOSVersion>6</MinOSVersion>
+         <MinOSRelease>1</MinOSRelease>
+     </pureCluster>
+   </platform>
+   <platform value="Linux">
+      <MinOSVersion>2</MinOSVersion>
+      <MinOSRelease>6</MinOSRelease>
+      <MinOSMinorRelease>16</MinOSMinorRelease>
+      <MinRHELVersion>5</MinRHELVersion>
+      <MinRHELSP>5</MinRHELSP>
+      <RHELRelease>5.4.0.3</RHELRelease>
+      <RHELReleasePackage>redhat-release</RHELReleasePackage>
+      <RHELReleaseVersion>5</RHELReleaseVersion>
+      <MinSLESVersion>10</MinSLESVersion>
+      <MinSLESSP>3</MinSLESSP>
+      <SLESRelease>15.45.8</SLESRelease>
+      <SLESReleasePackage>sles-release</SLESReleasePackage>
+      <SLESReleaseVersion>10</SLESReleaseVersion>
+      <CPPVersionString>CXXABI_1.3.1</CPPVersionString>
+      <CPPLibName>libstdc++.so.5</CPPLibName>
+      <LibCVersion>2</LibCVersion>
+      <LibCMajorRelease>4</LibCMajorRelease>
+      <LibCMinorRelease>0</LibCMinorRelease>
+      <xlcPackage value="Processor = LinuxPPC64">
+         <xlcLibName>/opt/ibmcmp/lib64/libibmc++.so.1</xlcLibName>
+         <xlcVersion>11</xlcVersion>
+         <xlcMajorRelease>1</xlcMajorRelease>
+         <xlcMinorRelease>0</xlcMinorRelease>
+         <xlcMinorRelease2>1</xlcMinorRelease2>
+      </xlcPackage>
+      <TSACPPName>/usr/lib/libstdc++.so.5</TSACPPName>
+      <ofedPackage>ofed</ofedPackage>
+      <ofedVersion>1.5.2</ofedVersion>
+      <libIBIBVERBSPackage>libibverbs</libIBIBVERBSPackage>
+      <libIBVERBSVersion>1.1.2</libIBVERBSVersion>
+      <gccPackage>gcc</gccPackage>
+      <binUtilsPackage>binutils</binUtilsPackage>
+      <cppPackage>cpp</cppPackage>
+      <gccCPPPackage>gcc-c++</gccCPPPackage>
+      <kernelSourcePackage>kernel-source</kernelSourcePackage>
+      <kernelDevelPackage>kernel-devel</kernelDevelPackage>
+         <uDAPL>
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>1.2.7</uDAPLVersion>
+         </uDAPL>
+         <uDAPL value="LinuxDistro = RHEL">
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>2.0.25</uDAPLVersion>
+          </uDAPL>
+      <pureCluster>
+         <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         <sg3UtilsPackage value="LinuxDistro = RHEL RHELVersion = 5 ">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 11">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 3">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 4">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sgPersistPackageName>sg_persist</sgPersistPackageName>
+      </pureCluster>
+   </platform>
+  </DB2Level>
+  <DB2Level value="9.8.0.3">
+   <platform value="AIX">
+     <MinOSVersion>5</MinOSVersion>
+     <MinOSRelease>3</MinOSRelease>
+     <MinTL>9</MinTL>
+     <MinSP>0</MinSP>
+     <TLSP value="Processor = POWER6 OSVersion = 6 OSRelease = 1">
+      <MinTL>3</MinTL>
+      <MinSP>3</MinSP>
+     </TLSP>
+     <TLSP value="Processor = POWER7 OSVersion = 6 OSRelease = 1">
+      <MinTL>4</MinTL>
+      <MinSP>3</MinSP>
+     </TLSP>
+     <xlcPackage>
+      <xlcPackageName>xlC.rte</xlcPackageName>
+      <xlcLabel>XL C/C++ Runtime</xlcLabel>
+      <xlcVersion>9</xlcVersion>
+      <xlcMajorRelease>0</xlcMajorRelease>
+      <xlcMinorRelease>0</xlcMinorRelease>
+      <xlcMinorRelease2>12</xlcMinorRelease2>
+     </xlcPackage>
+     <uDAPLLabel>uDAPL</uDAPLLabel>
+     <uDAPLPackage>udapl.rte</uDAPLPackage>
+     <uDAPL>
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>2</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 6 OSRelease = 1">
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>6</uDAPLMinorRel>
+          <uDAPLMinorRel2>0</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value="OSVersion = 7 OSRelease = 1">
+          <uDAPLVersion>7</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>1</uDAPLMinorRel2>
+     </uDAPL>
+     <pureCluster>
+         <MinOSVersion>6</MinOSVersion>
+         <MinOSRelease>1</MinOSRelease>
+     </pureCluster>
+   </platform>
+   <platform value="Linux">
+      <MinOSVersion>2</MinOSVersion>
+      <MinOSRelease>6</MinOSRelease>
+      <MinOSMinorRelease>16</MinOSMinorRelease>
+      <MinRHELVersion>5</MinRHELVersion>
+      <MinRHELSP>5</MinRHELSP>
+      <RHELRelease>5.4.0.3</RHELRelease>
+      <RHELReleasePackage>redhat-release</RHELReleasePackage>
+      <RHELReleaseVersion>5</RHELReleaseVersion>
+      <MinSLESVersion>10</MinSLESVersion>
+      <MinSLESSP>3</MinSLESSP>
+      <SLESRelease>15.45.8</SLESRelease>
+      <SLESReleasePackage>sles-release</SLESReleasePackage>
+      <SLESReleaseVersion>10</SLESReleaseVersion>
+      <CPPVersionString>CXXABI_1.3.1</CPPVersionString>
+      <CPPLibName>libstdc++.so.5</CPPLibName>
+      <LibCVersion>2</LibCVersion>
+      <LibCMajorRelease>4</LibCMajorRelease>
+      <LibCMinorRelease>0</LibCMinorRelease>
+      <xlcPackage value="Processor = LinuxPPC64">
+         <xlcVersion>9</xlcVersion>
+         <xlcLibName>/opt/ibmcmp/lib64/libibmc++.so.1</xlcLibName>
+         <xlcMajorRelease>0</xlcMajorRelease>
+         <xlcMinorRelease>0</xlcMinorRelease>
+         <xlcMinorRelease2>5</xlcMinorRelease2>
+      </xlcPackage>
+      <TSACPPName>/usr/lib/libstdc++.so.5</TSACPPName>
+      <ofedPackage>ofed</ofedPackage>
+      <ofedVersion>1.5.2</ofedVersion>
+      <libIBIBVERBSPackage>libibverbs</libIBIBVERBSPackage>
+      <libIBVERBSVersion>1.1.2</libIBVERBSVersion>
+      <gccPackage>gcc</gccPackage>
+      <binUtilsPackage>binutils</binUtilsPackage>
+      <cppPackage>cpp</cppPackage>
+      <gccCPPPackage>gcc-c++</gccCPPPackage>
+      <kernelSourcePackage>kernel-source</kernelSourcePackage>
+      <kernelDevelPackage>kernel-devel</kernelDevelPackage>
+         <uDAPL>
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>1.2.7</uDAPLVersion>
+         </uDAPL>
+         <uDAPL value="LinuxDistro = RHEL">
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>2.0.25</uDAPLVersion>
+          </uDAPL>
+      <pureCluster>
+         <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         <sg3UtilsPackage value="LinuxDistro = RHEL RHELVersion = 5 ">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 11">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 3">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 4">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sgPersistPackageName>sg_persist</sgPersistPackageName>
+      </pureCluster>
+   </platform>
+  </DB2Level>
+  <DB2Level value="9.8.0.2">
+   <platform value="AIX">
+     <MinOSVersion>5</MinOSVersion>
+     <MinOSRelease>3</MinOSRelease>
+     <MinTL>9</MinTL>
+     <MinSP>0</MinSP>
+     <TLSP value="Processor = POWER6 OSVersion = 6 OSRelease = 1">
+      <MinTL>3</MinTL>
+      <MinSP>3</MinSP>
+     </TLSP>
+     <TLSP value="Processor = POWER7 OSVersion = 6 OSRelease = 1">
+      <MinTL>4</MinTL>
+      <MinSP>3</MinSP>
+     </TLSP>
+     <xlcPackage>
+      <xlcPackageName>xlC.rte</xlcPackageName>
+      <xlcLabel>XL C/C++ Runtime</xlcLabel>
+      <xlcVersion>9</xlcVersion>
+      <xlcMajorRelease>0</xlcMajorRelease>
+      <xlcMinorRelease>0</xlcMinorRelease>
+      <xlcMinorRelease2>12</xlcMinorRelease2>
+     </xlcPackage>
+     <uDAPLLabel>uDAPL</uDAPLLabel>
+     <uDAPLPackage>udapl.rte</uDAPLPackage>
+     <uDAPL>
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>2</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value ="OSVersion = 6 OSRelease = 1" >
+          <uDAPLVersion>6</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>6</uDAPLMinorRel>
+          <uDAPLMinorRel2>0</uDAPLMinorRel2>
+     </uDAPL>
+     <uDAPL value ="OSVersion = 7 OSRelease = 1" >
+          <uDAPLVersion>7</uDAPLVersion>
+          <uDAPLMajorRel>1</uDAPLMajorRel>
+          <uDAPLMinorRel>0</uDAPLMinorRel>
+          <uDAPLMinorRel2>1</uDAPLMinorRel2>
+     </uDAPL>
+     <pureCluster>
+         <MinOSVersion>6</MinOSVersion>
+         <MinOSRelease>1</MinOSRelease>
+     </pureCluster>
+   </platform>
+   <platform value="Linux">
+      <MinOSVersion>2</MinOSVersion>
+      <MinOSRelease>6</MinOSRelease>
+      <MinOSMinorRelease>16</MinOSMinorRelease>
+      <MinRHELVersion>5</MinRHELVersion>
+      <MinRHELSP>5</MinRHELSP>
+      <RHELRelease>5.4.0.3</RHELRelease>
+      <RHELReleasePackage>redhat-release</RHELReleasePackage>
+      <RHELReleaseVersion>5</RHELReleaseVersion>
+      <MinSLESVersion>10</MinSLESVersion>
+      <MinSLESSP>3</MinSLESSP>
+      <SLESRelease>15.45.8</SLESRelease>
+      <SLESReleasePackage>sles-release</SLESReleasePackage>
+      <SLESReleaseVersion>10</SLESReleaseVersion>
+      <CPPVersionString>CXXABI_1.3.1</CPPVersionString>
+      <CPPLibName>libstdc++.so.5</CPPLibName>
+      <LibCVersion>2</LibCVersion>
+      <LibCMajorRelease>4</LibCMajorRelease>
+      <LibCMinorRelease>0</LibCMinorRelease>
+      <xlcPackage value="Processor = LinuxPPC64">
+         <xlcVersion>9</xlcVersion>
+         <xlcLibName>/opt/ibmcmp/lib64/libibmc++.so.1</xlcLibName>
+         <xlcMajorRelease>0</xlcMajorRelease>
+         <xlcMinorRelease>0</xlcMinorRelease>
+         <xlcMinorRelease2>5</xlcMinorRelease2>
+      </xlcPackage>
+      <TSACPPName>/usr/lib/libstdc++.so.5</TSACPPName>
+      <ofedPackage>ofed</ofedPackage>
+      <ofedVersion>1.5.2</ofedVersion>
+      <libIBIBVERBSPackage>libibverbs</libIBIBVERBSPackage>
+      <libIBVERBSVersion>1.1.2</libIBVERBSVersion>
+      <gccPackage>gcc</gccPackage>
+      <binUtilsPackage>binutils</binUtilsPackage>
+      <cppPackage>cpp</cppPackage>
+      <gccCPPPackage>gcc-c++</gccCPPPackage>
+      <kernelSourcePackage>kernel-source</kernelSourcePackage>
+      <kernelDevelPackage>kernel-devel</kernelDevelPackage>
+         <uDAPL>
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>1.2.7</uDAPLVersion>
+         </uDAPL>
+         <uDAPL value="LinuxDistro = RHEL">
+            <uDAPLPackage>dapl</uDAPLPackage>
+            <uDAPLVersion>2.0.25</uDAPLVersion>
+          </uDAPL>
+      <pureCluster>
+         <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         <sg3UtilsPackage value="LinuxDistro = RHEL RHELVersion = 5 ">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 11">
+           <sg3UtilsPackageName>sg3_utils</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 3">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sg3UtilsPackage value="LinuxDistro = SUSE SLESVersion = 10 SLESSP = 4">
+           <sg3UtilsPackageName>scsi</sg3UtilsPackageName>
+         </sg3UtilsPackage>
+         <sgPersistPackageName>sg_persist</sgPersistPackageName>
+      </pureCluster>
+   </platform>
+  </DB2Level>
+</DB2PrereqCheckXML>

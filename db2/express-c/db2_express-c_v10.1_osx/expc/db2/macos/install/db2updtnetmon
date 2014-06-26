@@ -1,0 +1,145 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+#
+# NAME: db2updtnetmon
+#
+# FUNCTION: db2updtnetmon - Update the netmon.cf file with a !REQD entry
+#
+#                  Return - 0 on succesfully added an entry or
+#                           the entry to be added already exists in the file
+#                         - 1 if retrieve the IP failed from db2getgateway
+#                               or update the netmon.cf file fails
+#                         - 2 if db2getgateway has failed  //w911235my 
+#
+########################################################################
+# Options for "set" command
+setopts="${setopts:-+x}"
+set ${setopts?}
+
+TRUE=0                     # True variable
+FALSE=1                    # False variable
+export TRUE FALSE
+
+# Set the directory name where this file is located.
+curdir=`/bin/pwd -P`
+PROGDIR=`/usr/bin/dirname $0`
+cd ${PROGDIR?}
+PROGDIR=`/bin/pwd -P`
+
+PROGNAME=`/usr/bin/basename $0`       # Program name
+
+# To display the command syntax
+syntax ()
+{
+    echo "db2updtnetmon "
+}
+
+# Default initialization for command execution
+initialization ()
+{
+    set ${setopts?}
+
+    DB2UPDTNETMON="${PROGDIR?}/db2updtnetmon"
+    db2updtnetmon_rc=0
+    DB2GETGATEWAYS=${PROGDIR?}/db2getgateways
+    getgateways_rc=0
+    DB2GETNETWORKS=${PROGDIR?}/db2getnetwork
+    getnetworks_rc=0
+    NETMON_FILE="/var/ct/cfg/netmon.cf"
+    LOGFILE="/tmp/db2updatenetmon.log"
+    validate_netmon_rc=0
+
+    HOSTNAME=""   # this host name should map to the 2nd column in db2nodes.cfg file to decide which line(s) in db2nodes.cfg is for this host, so it can be used to get all the netnames as well.
+    INSTNAME=""
+    INSTHOME=""
+    NODESCFGFILE=""
+    NETWORKLIST=""
+    NETNAMELIST=""
+    MISSING_LIST=""
+}
+
+# Install the DB2 HA Scripts
+update_netmon ()
+{
+    set ${setopts?}
+    db2updtnetmon_rc=${TRUE?}
+    getgateways_rc=${TRUE?}
+    getgateways_output=""
+
+    if [ -f ${LOGFILE?} ]; then
+        /bin/rm ${LOGFILE?}
+    fi
+
+    if [ -f ${DB2GETGATEWAYS?} ]; then
+        getgateways_output=`${DB2GETGATEWAYS?}`
+        getgateways_rc=$?
+        if [ ${TRUE?} -eq ${getgateways_rc?} ]; then
+           /bin/echo "${getgateways_output?}"| while read entry; do 
+                g_rc=0
+                /usr/bin/grep "${entry?}" ${NETMON_FILE?} 1>>${LOGFILE?} 2>>${LOGFILE?}
+                g_rc=$?
+                /bin/echo "g_rc is ${g_rc?}" >> ${LOGFILE?}
+                if [ ${g_rc?} -ne ${TRUE?} ]; then
+                    a_rc=0
+                    /bin/echo "${entry?}" >> ${NETMON_FILE?}
+                    a_rc=$?
+                    if [ ${a_rc?} -ne ${TRUE?} ]; then
+                        db2updtnetmon_rc=${a_rc?}
+                    fi
+                fi
+            done
+        else
+            db2updtnetmon_rc=2
+        fi
+    fi
+
+}
+
+#                End of function definitions
+#-----------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------#
+#                             Main program
+#-----------------------------------------------------------------------#
+
+set ${setopts?}
+
+initialization # Set up environment
+
+# Process command-line options
+while getopts :i:n:l:d optchar; do
+            case ${optchar?} in
+                i) #instance name
+                    INSTNAME="${OPTARG?}"
+                    ;;
+                n) #hostname/netname
+                    HOSTNAME="${OPTARG?}"
+                    ;;
+                d)  # debug mode used for IBM Support
+                    DEBUG=${TRUE?}
+                    setopts="-x"
+                    ;;
+                l) #log file
+                    LOGFILE="${OPTARG?}"
+            esac
+done
+shift `expr $OPTIND - 1` # Delete all option args
+
+set ${setopts?}
+
+update_netmon
+
+exit ${db2updtnetmon_rc?}
+

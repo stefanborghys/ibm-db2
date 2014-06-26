@@ -1,0 +1,77 @@
+** ============================================================================
+**
+** Sample response file for db2iprune
+** ----------------------------------
+** 
+** Pruning can reduce the size of the product installation image prior to installing 
+** the DB2 product by removing unneeded components, languages or products from the 
+** media.  The result is a new, smaller DB2 installation image that can be installed 
+** using the regular DB2 installation methods.
+**
+** To select features to prune, enable the corresponding keywords.
+** Comments are made by placing either an asterisk (*) or a number sign (#) at
+** the start of a line, or by placing ** or ## after the start of a line to
+** comment out the rest of that line.
+**
+** For more information on how to use db2iprune, see the topic
+** "db2iprune - Reduce installation image size command" in the DB2 Information Center.
+**
+** Refer to the DB2 Information Center at:
+** http://publib.boulder.ibm.com/infocenter/db2luw/v10r1.
+**
+** ============================================================================
+
+
+** The following products are available to prune.  At least one must not be
+** pruned.
+** ------------------------------------------------------------------------
+*PRUNE_PROD               = EXPRESS_C                           ** DB2 Express-C
+
+** The following components are available to prune. See the COMP descriptions
+** below for more information about these options.
+** --------------------------------------------------------------------------
+
+** The base application development tools component contains tools and files
+** (including header files, libraries, and a precompiler) that are needed for
+** developing applications that work with DB2.
+*PRUNE_COMP               = APPLICATION_DEVELOPMENT_TOOLS       ** Base application development tools
+
+** Provides federated support required to access DB2 for iSeries and DB2 for
+** z/OS and OS/390 data sources.
+*PRUNE_COMP               = DB2_DATA_SOURCE_SUPPORT             ** DB2 data source support
+
+** Sample database source provides sample data and metadata that allows you to
+** create a sample database using the First Steps application.
+*PRUNE_COMP               = DB2_SAMPLE_DATABASE                 ** Sample database source
+
+** DB2 Update Service is a web tool that lists the available DB2 product
+** updates, and provides details about product updates.  The DB2 Update Service
+** requires an internet connection.
+*PRUNE_COMP               = DB2_UPDATE_SERVICE                  ** DB2 Update Service
+
+** First Steps is a graphical tool that will help familiarize you with DB2
+** features and functions.
+*PRUNE_COMP               = FIRST_STEPS                         ** First Steps
+
+** The DB2 Instance Setup wizard is a Java-based tool you can use to set up
+** instances on your computer after installing DB2.
+*PRUNE_COMP               = INSTANCE_SETUP_SUPPORT              ** DB2 Instance Setup wizard
+
+
+** The following languages are available to prune.  You cannot prune English.
+** --------------------------------------------------------------------------
+*PRUNE_LANG               = ALL             ** Remove all except English
+*PRUNE_LANG               = BR              ** Portuguese - Brazil (pt_BR)
+*PRUNE_LANG               = CN              ** Simplified Chinese (zh_CN)
+*PRUNE_LANG               = CZ              ** Czech (cs_CZ)
+*PRUNE_LANG               = DE              ** German (de_DE)
+*PRUNE_LANG               = ES              ** Spanish (es_ES)
+*PRUNE_LANG               = FR              ** French (fr_FR)
+*PRUNE_LANG               = IT              ** Italian (it_IT)
+*PRUNE_LANG               = JP              ** Japanese (ja_JP)
+*PRUNE_LANG               = KR              ** Korean (ko_KR)
+*PRUNE_LANG               = PL              ** Polish (pl_PL)
+*PRUNE_LANG               = RU              ** Russian (ru_RU)
+*PRUNE_LANG               = TW              ** Traditional Chinese (zh_TW)
+
+

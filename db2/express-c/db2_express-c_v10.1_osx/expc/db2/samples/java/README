@@ -1,0 +1,93 @@
+*****************************************************************************
+*
+* README for Java Sample Install Client
+*
+* Last update: April 2006
+*
+* The db2/samples/java directory contains this README file and a 
+* Java program InstallTester.java.  The program InstallTester.java is used to 
+* run the DB2 install process through an external client.
+*
+* This README file describes the sample files in the directory.  It is
+* recommended that you copy the files from the directory to your working
+* directory prior to building the sample program.
+*
+* To build and run the DB2 Java sample program under the db2/samples/java 
+* directory, you must have Java SDK 1.4.x or above installed.
+*
+*****************************************************************************
+*
+* MESSAGE PROTOCOL
+* 
+* The sample program shows how to handle messages sent out in 
+* machine-readable format.  
+*
+* For more information on the message protocol used by the installer,
+* please refer to the documentation located at:
+*
+* http://publib.boulder.ibm.com/infocenter/db2luw/v9/topic/com.ibm.db2.udb.uprun.doc/doc/t0023996.htm
+*
+*****************************************************************************
+*
+*     QUICKSTART
+*
+*  1) Copy db2/samples/java/* to a working directory
+*
+*  2) If you have a compatible make program on your system, you can use the
+*     makefile provided.  Modify the Makefile to reflect your environment.
+*
+*     Execute 'make' in your working directory.
+*
+*     Note:
+*       The makefile provided will only work if a compatible make executable
+*       program is resident on your system in a directory included in your
+*       PATH variable.  Such a make utility may be provided by another 
+*       language compiler.
+*
+*  3) If you do not have a compatible make utility, you cannot use the 
+*     makefile.
+*     You can use the javac bytecode compiler to build the sample program.
+*
+*     To build the program without a compatible make utility:
+*
+*       javac <program name>.java
+*
+*     To build everything in the working directory:
+*
+*       javac *.java
+*
+*  3) Modify the response file to contain the following keyword:
+*     OUTPUT_STREAM_TYPE = MACHINE
+*
+*  4) Start the DB2 installation using the sample program with the following
+*     command:
+*
+*    java InstallTester <location of db2setup> -r <location of response file>
+*
+*****************************************************************************
+*
+* JAVA SAMPLE INSTALL CLIENT DESCRIPTIONS:
+*
+* The following are the Java sample files included with DB2.  For more
+* information on the sample programs, refer to the program source files.
+*****************************************************************************
+* README: this file
+* makefile: makefile for the sample program
+*****************************************************************************
+* Sample java client
+*
+* InstallTester.java - Sample DB2 install java client
+*****************************************************************************
+* Stream handling related classes
+*
+* StreamCommunicator.java - How to receive/dispatch messages and generate 
+*                           events using the stream listener classes
+* StreamEvent.java        - How to split the message received
+*                           Base class to ProgressEvent and MessageEvent
+* ProgressEvent.java      - How to handle progress streams using StreamEvent
+* MessageEvent.java       - How to handle message streams using StreamEvent
+* ProgressListener.java   - Listener interface for the progress stream
+* MessageListerner.java   - Listener interface for the message stream
+* UnknownMessageException.java - Exception class for unknown message streams
+* UnknownProgressException.java- Exception class for unknown progress streams
+*****************************************************************************

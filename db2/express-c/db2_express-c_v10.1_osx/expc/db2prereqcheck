@@ -1,0 +1,204 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+#
+# Filename      : db2prereqcheck
+# Type          : sh (Bourne shell)
+# Function      : Generic script that calls platform specific db2prereqcheck
+#
+########################################################################
+
+setopts=${setopts:-+x}
+set ${setopts?}
+
+# Constants are set at beginning of execution and do not change (UPPERCASE)
+# First get the OS and set up a number of commands
+if [ -x /usr/bin/uname ]; then
+    CMD_UNAME=/usr/bin/uname
+elif [ -x /bin/uname ]; then
+    CMD_UNAME=/bin/uname
+else
+    while :
+    do
+        echo "Command 'uname' not found !  Please Specify OS :
+
+                1) AIX
+                2) HP/IPF
+                3) Linux/390x
+                4) Linux/ppc64
+                5) Linux/x86-32
+                6) Linux/x86-64
+                7) MacOS
+                8) Sun/AMD64
+                9) Sun/UltraSparc
+"
+        echo "Please Enter OS number :"
+        read osNum
+        case "${osNum?}" in
+            1) OSN="AIX" OSM="ppc" PLATNAME="AIX"
+               break ;;
+            2) OSN="HP-UX" OSM="ia64" PLATNAME="HP/IPF"
+               break ;;
+            3) OSN="Linux" OSM="s390" PLATNAME="Linux/390x"
+               break ;;
+            4) OSN="Linux" OSM="ppc64" PLATNAME="Linux/ppc64"
+               break ;;
+            5) OSN="Linux" OSM="i386" PLATNAME="Linux/x86-32"
+               break ;;
+            6) OSN="Linux" OSM="x86_64" PLATNAME="Linux/x86-64"
+               break ;;
+            7) OSN="Darwin" OSM="i386" PLATNAME="MacOS"
+               break ;;
+            8) OSN="SunOS" OSM="amd64" PLATNAME="Sun/AMD64"
+               break ;;
+            9) OSN="SunOS" OSM="sparc" PLATNAME="Sun/UltraSparc"
+               break ;;
+
+            *)  echo "\nInvalid number entered ... please try again" ;;
+        esac
+    done
+fi
+
+if [ -z "${OSN}" ]
+then
+  OSN=`${CMD_UNAME?} | /usr/bin/awk '{print $1}'`
+fi
+
+if [ -z "$OSM" ]
+then
+    OSM=`${CMD_UNAME?} -m | /usr/bin/awk '{print $1}'`
+fi
+
+case ${OSN?} in
+    "Linux"* ) BINDIR="" ;;
+    "Darwin" ) BINDIR="/usr/bin/" CMD_ECHO="/bin/echo" CMD_PWD="/bin/pwd" ;;
+    *        ) BINDIR="/usr/bin/" ;;
+esac
+
+CMD_BASENAME="${CMD_BASENAME:-${BINDIR?}basename}"
+CMD_DIRNAME="${CMD_DIRNAME:-${BINDIR?}dirname}"
+CMD_PWD="${CMD_PWD:-${BINDIR?}pwd}"
+CMD_ECHO="${CMD_ECHO:-${BINDIR?}echo}"
+INSTALLDIR="/::/" # nowhere.
+
+# Set the directory name where this file is located; cd into DB2CURDIR
+MYNAME=`${CMD_BASENAME?} $0`
+DB2CURDIR=`${CMD_PWD?}`
+PROGDIR=`${CMD_DIRNAME?} $0`
+cd ${PROGDIR?}
+PROGDIR=`${CMD_PWD?}`
+cd ${DB2CURDIR?}
+export DB2CURDIR
+
+if [ -d ${PROGDIR?}/disk1/db2 ]
+then
+    PROGDIR=${PROGDIR?}/disk1
+fi
+
+case ${OSN?} in 
+    "AIX")
+        INSTALLDIR="${PROGDIR?}/db2/aix/bin"
+        PLATNAME="AIX" ;;
+    "Darwin")
+        case ${OSM?} in
+          *86*)
+              INSTALLDIR="${PROGDIR?}/db2/macos/bin"
+              PLATNAME="MacOS" ;;
+        esac ;;
+    "HP-UX")
+        case ${OSM?} in
+          "ia64")
+              INSTALLDIR="${PROGDIR?}/db2/hpipf/bin"
+              PLATNAME="HP/IPF" ;;
+        esac ;;
+    "Linux")
+        case ${OSM?} in
+          i*86)
+              INSTALLDIR="${PROGDIR?}/db2/linux/bin"
+              PLATNAME="Linux/x86-32" ;;
+          "ppc64")
+              INSTALLDIR="${PROGDIR?}/db2/linuxppc/bin"
+              PLATNAME="Linux/ppc64" ;;
+          "s390x")
+              INSTALLDIR="${PROGDIR?}/db2/linux390/bin"
+              PLATNAME="Linux/390x" ;;
+          "x86_64")
+              INSTALLDIR="${PROGDIR?}/db2/linuxamd64/bin"
+              PLATNAME="Linux/x86-64" ;;
+        esac ;;
+    "SunOS")
+        case ${OSM?} in
+          "i86pc")
+              INSTALLDIR="${PROGDIR?}/db2/solaris_x64/bin"
+              PLATNAME="Sun/AMD64" ;;
+          sun4*)
+              INSTALLDIR="${PROGDIR?}/db2/solaris/bin"
+              PLATNAME="Sun/UltraSparc" ;;
+        esac ;;
+
+esac
+
+
+
+for installer in ${INSTALLDIR?}
+do
+    if [ -f ${installer?}/db2prereqcheck ]
+    then
+        INSTALLDIR=${installer?}
+        break
+    fi
+done
+
+if [ -z "${PLATNAME}" ]
+then
+    PLATNAME=${OSN?}
+    if [ ! -z "${OSM}" ]
+    then
+        PLATNAME="${PLATNAME?} [${OSM?}]"
+    fi
+fi
+
+
+
+if [ ! -f "${INSTALLDIR?}/db2prereqcheck" ]; then
+    ${CMD_ECHO?} "DBI1189E There has been an attempt to use db2prereqcheck 
+on an image for a platform that does not match the current platform 
+'${PLATNAME?}' on which it is being run.
+
+Explanation:
+
+Possible causes include:
+
+- This DB2 install image is not valid for the current 
+platform.
+
+- The current platform is not supported by DB2.
+
+
+User Response:
+
+Install DB2 using the DB2 install image that corresponds 
+with the current platform '${PLATNAME?}'. 
+
+"
+
+    exit 67
+fi
+
+umask 022
+
+# The installer needs to have the current directory set properly.
+cd ${INSTALLDIR?}
+# If platform specific installer checks out, run it.
+exec ./db2prereqcheck "$@"

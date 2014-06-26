@@ -1,0 +1,59 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+#
+# NAME: db2getgateways
+#
+# FUNCTION: db2getgateways return the list of pingable gateway in the 
+#           routing table.
+#
+# RETURN: 
+#         0  Some working gateway are found
+#           The ouput format is 
+#              "!REQD %interfaceName% %ip%"
+#             
+#         1 No working gateway are found
+#                NOGATEWAY
+#              
+#
+# getgateways is supplied as-is as an example of how to perform this function.
+# There is no warranty or support.
+##############################################################################
+
+# The Flag 'UG' mean route up and operational and the route entry use a gateway.
+# The gateway is the second column value
+
+      #not supported
+
+#The line format is !REQD %interfaceName% %ip%
+
+# for each gateway found check if it's pingable
+Gateways=`/bin/echo "${Gateways}" | /usr/bin/sort -u | while read ifname ip 
+do
+	 (ping) -c 1 ${ip} 2>/dev/null 1>/dev/null
+         if [ $? -eq 0 ]
+         then
+     	    /bin/echo "!REQD ${ifname} ${ip}"
+         fi
+done`
+
+#if not gateway was found or was pingable report it.
+if [ "${Gateways}" ]
+then
+   /bin/echo "${Gateways}"
+   exit 0   
+else 
+   /bin/echo "NOGATEWAY"
+   exit 1
+fi

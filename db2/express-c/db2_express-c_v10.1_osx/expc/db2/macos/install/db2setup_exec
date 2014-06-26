@@ -1,0 +1,626 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) COPYRIGHT International Business Machines Corp. 2006
+#
+# All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+#
+# NAME: db2setup_exec
+#
+# FUNCTION: db2setup_exec - install DB2
+#
+# USAGE: db2setup_exec (internally called by db2setup)
+#
+# NOTE:  For java debugging purposes, if you set DB2WHICHJRE env var, 
+#        db2setup will output debug info on which location the jre
+#        being used is located.
+#
+#############################################################################
+
+# Options for "set" command
+setopts="${setopts:-+x}"
+set ${setopts?}
+
+# Set the directory name where this file is located.
+curdir=`/bin/pwd -P`
+PROGDIR=`/usr/bin/dirname $0`
+cd ${PROGDIR?}
+PROGDIR=`/bin/pwd -P`
+PROGNAME=`/usr/bin/basename $0`    # Program name
+
+#-----------------------------------------------------------------------#
+#               Start of function definitions
+#-----------------------------------------------------------------------#
+
+# To display the command syntax
+usage ()
+{
+    /bin/echo "Usage: db2setup_exec <db2setup options> -g <SILENT> -m <RUNDIR> -p <PKGLOC> -q <TMPDIR>"
+    exit 67
+}
+
+constants ()
+{
+    set ${setopts?}
+    CMD_DB2IURE=db2iure
+    TRUE=0
+    FALSE=1
+    DEBUG=${FALSE?}
+    GIVEN_LANG=""
+    DB2OPTS=""
+    RUNDIR=""
+    RUNLOCATION=""
+    INSTALLDIR=""
+    TMPDIR=${TMPDIR:-/tmp}
+
+    if [ `${PROGDIR?}/../bin/db2usrinf -E` -ne 0 ]; then
+       TMP_USER=`${PROGDIR?}/../bin/db2usrinf -n -E`
+       ERRFILE_NAME="db2setup_${TMP_USER?}.err"
+       INSTALL_HOME=`${PROGDIR?}/../bin/db2usrinf -d ${TMP_USER?}`
+       DB2FS="${INSTALL_HOME?}/sqllib/bin/db2fs"
+       DB2META="${INSTALL_HOME?}/sqllib/.metadata"
+       DB2FS_LOG="db2fs_${TMP_USER?}.$$"
+       DB2PROFILE="${INSTALL_HOME?}/sqllib/db2profile"
+       TRCFILE_NAME="db2setup_${TMP_USER?}.trc"
+    else
+       ERRFILE_NAME="db2setup.err"
+       DB2META=""
+       DB2FS=""
+       TRCFILE_NAME="db2setup.trc"
+    fi
+    ERRFILE=${TMPDIR?}/${ERRFILE_NAME?}
+    PKGLOC=""
+    BINDIR=""
+    SHOWHELP=${FALSE?}
+    TRACE=${FALSE?}
+    SILENT=${FALSE?}
+    VALIDATEONLY=${FALSE?}
+    RC=${TRUE?}
+    NOBACKUP=""
+    LOGFILE=""
+    TRCFILE=""
+    RSPFILE=""
+    NOT_DB2SETUP=1
+}
+
+# Check if absolute path is given
+chk_abs_path ()
+{
+   set ${setopts?}
+   file_path=$1
+   /bin/echo ${file_path?} | /usr/bin/grep '^/' 2>&1 1>/dev/null
+   if [ $? -ne ${TRUE?} ]; then
+      /bin/echo "ERROR: ${file_path?} has to be absolute path"
+      exit 67
+   fi
+   return ${TRUE?}
+}
+
+#-----------------------------------------------------------------------
+# Name       - chk_file_creation
+# Function   - Check if the passed file can be created
+# Parameters - $1 - name of the file with full path
+#-----------------------------------------------------------------------
+chk_file_creation ()
+{
+    set ${setopts?}
+    file_chk=$1
+    if [ $# -ne 1 ]; then
+       /bin/echo "Error: Usage chk_file_creation <filename with path>"
+       exit 67
+    fi
+    /usr/bin/touch ${file_chk?} 2>/dev/null 1>/dev/null
+    if [ $? -ne ${TRUE?} ]; then
+       display_msg ${DB2CAT?} 503 'An error was encountered when opening or writing to file,%s.' ${file_chk?}
+       /bin/echo ""
+       clean_runtime
+       exit 67
+    fi
+}
+
+#-----------------------------------------------------------------------
+# Name       - clean_runtime
+# Function   - clean up runtime files used by DB2 installer
+#-----------------------------------------------------------------------
+clean_runtime ()
+{
+    set ${setopts?}
+    if [ -d ${RUNDIR?} ]; then
+        cd ${TMPDIR?}
+        /bin/rm -rf  ${RUNDIR?}
+    fi
+    if [ ${NOT_DB2SETUP?} -eq ${TRUE?} ]; then
+        /bin/rm -f ${RSPFILE?} 2>/dev/null 1>/dev/null
+    fi
+}
+
+#-----------------------------------------------------------------------
+# Name       - display_msg
+# Function   - Displays a message from the message catalog
+# Parameters - $1 - name of the message catalog
+#            - $2 - message number
+#            - $3 - default message string
+#            - $4,$5,$6 - arguments to substitute in msg string, if needed
+#-----------------------------------------------------------------------
+display_msg()
+{
+    set ${setopts?}
+    unset catname msgid deftmsg msgstr
+    catname="$1"
+    msgid=$2
+    deftmsg="$3"
+
+    shift;shift;shift
+
+     ${BINDIR?}/disp_msg 1 ${msgid} ${catname} \
+     "${deftmsg}" $@ 2>&1 # | /usr/bin/tee -a ${DB2INSTLOG?}
+
+} # end of display_msg()
+
+_exit_no_pass ()
+{
+  set ${setopts?}
+  tmp_opt=""
+  tmp_name=""
+  tmp_var=""
+
+  tmp_opt=$1
+  tmp_name=$2;
+  tmp_var=$3;
+  
+  if [ "${tmp_opt?}" = "dir" ]; then
+     if [ ! -d "${tmp_var?}" ]; then
+       /bin/echo "Error: ${tmp_name?} (${tmp_var?})  does not exist."
+       exit 67
+     fi
+  elif  [ "${tmp_opt?}" = "file" ]; then
+     if [ ! -f "${tmp_var?}" ]; then
+       /bin/echo "Error: ${tmp_name?} (${tmp_var?})  does not exist."
+       exit 67
+     fi
+  else
+     if [ "X${tmp_var?}" = "X" ]; then
+       /bin/echo "Error: ${tmp_opt?} <${tmp_name?}>  was not passed."
+       exit 67
+     fi
+  fi
+}
+
+chk_options ()
+{
+   set ${setopts?}
+   _exit_no_pass "-m" "RUNDIR" "${RUNDIR?}"
+   _exit_no_pass "dir" "RUNDIR" "${RUNDIR?}" 
+   _exit_no_pass "dir" "RUNLOCATION" "${RUNLOCATION?}" 
+   _exit_no_pass "dir" "BINDIR" "${BINDIR?}"
+   _exit_no_pass "-l" "LOGFILE" "${LOGFILE?}"
+   if [ ${SILENT?} -eq ${TRUE?} ]; then
+       _exit_no_pass "-r" "RSPFILE" "${RSPFILE?}"
+       _exit_no_pass "file" "RSPFILE" "${RSPFILE?}"
+   fi
+   _exit_no_pass "-p" "PKGLOC" "${PKGLOC?}"
+   _exit_no_pass "dir" "PKGLOC" "${PKGLOC?}"
+   _exit_no_pass "-p" "TMPDIR" "${TMPDIR?}"
+   _exit_no_pass "dir" "TMPDIR" "${TMPDIR?}"
+}
+
+set_lang_internal ()
+{
+    set ${setopts?}
+    bindir="$1"
+    msgdir="$2"
+    lang="$3"
+
+    CMD_DB2LANGDIR="${bindir?}/db2langdir"
+
+    if [ "X$lang" != "X" ]; then
+       LANG_CUSTOM=0
+    else
+       LANG_CUSTOM=1
+    fi
+    # Default locale name and locale-specific message directory
+    
+    LANG=${LANG:-C}
+    locname=${LANG?}
+    
+    if [ ${LANG_CUSTOM?} -eq 0 ]; then
+       locname=`${CMD_DB2LANGDIR?} ${lang?} -locale`
+       DB2_LANG_JAVA=${locname?}
+    fi
+
+    langdir=`${CMD_DB2LANGDIR?} ${locname?}`
+    clangdir=`${CMD_DB2LANGDIR?} C`
+
+    if [ -f ${msgdir?}/${langdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${langdir?}/db2install.cat"
+        LANGUAGEDIR=${langdir?}
+    elif [ -f ${msgdir?}/${clangdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${clangdir?}/db2install.cat"
+        LANGUAGEDIR=${clangdir?}
+    else
+        /bin/echo "DBI1055E The message file db2install.cat cannot be found."
+        /bin/echo
+        /bin/echo "Explanation:  The message file required by this"
+        /bin/echo "script is missing from the system; it may have been"
+        /bin/echo "deleted or the database products may have been loaded"
+        /bin/echo "incorrectly."
+        /bin/echo
+        /bin/echo "User Response:  Verify that the product option containing"
+        /bin/echo "the message file is installed correctly.  If there are"
+        /bin/echo "verification errors; reinstall the product option."
+        exit 67
+    fi
+
+    # check if the locale exists.  If not, we'll set LANG to C for any
+    # subprocesses.
+    /usr/bin/locale -a 2> /dev/null | grep '^'${locname?}'$' > /dev/null
+    if [ $? -ne 0 ]
+    then
+        locname=C
+    fi
+
+    # if a language was passed in, set LANG - but if not, leave it alone.
+    # (if it isn't a valid language, well, try resetting anyway)
+    if [ ${LANG_CUSTOM?} -eq 0 ]
+    then
+        /usr/bin/locale -a 2> /dev/null | grep '^'${LANG:-C}'$' > /dev/null
+        if [ $? -eq 0 ]; then
+            LANG=${locname?}
+        else 
+            # if locname is valid, set LANG to locname
+            /usr/bin/locale -a 2> /dev/null | grep '^'${locname:-C}'$' > /dev/null
+            if [ $? -eq 0 ]; then
+                LANG=${locname?}
+            fi
+        fi
+    fi
+
+    # Set LANG and NLSPATH variables for use by dspmsg command
+    NLSPATH="${msgdir?}/%L/%N:${msgdir?}/${clangdir?}/%N"
+    SHORTLANG=`${CMD_DB2LANGDIR?} ${LANG:-C} -short`
+
+    export LANG NLSPATH
+}
+
+set_lang ()
+{
+    set ${setopts?}
+    set_lang_internal ${BINDIR?} ${INSTALLDIR?}/locale $1
+}
+
+#-----------------------------------------------------------------------
+# Name       - setup_java_env
+# Function   - this function is run to setup the env for the java gui
+# Parameters - none
+#
+#-----------------------------------------------------------------------
+setup_java_env()
+{
+   setopts="${setopts:-+x}"
+   set ${setopts?}
+   rc=0
+   DEBUG="${DEBUG:-1}"
+
+    # On Mac/Darwin, we use the already installed system JVM, 1.6 is a prereq
+    DB2USELOCALJRE=TRUE
+    JAVA_HOME=/System/Library/Frameworks/JavaVM.framework/Versions/1.6.0/Home
+    JAVA_OPTIONS="$JAVA_OPTIONS -Ddb2.nostrict=TRUE"
+    export DB2USELOCALJRE
+    export JAVA_HOME
+
+    if [ "X$DB2USELOCALJRE" != "X" ]; then
+       QUICKSTART=""
+    else
+       QUICKSTART="-Xquickstart "
+    fi
+
+##
+## temporarily stop using -Dfile.encoding=UTF-8 in Coral LA due to 
+##  java pmr on AIX # 55017,001,866
+##
+##    JAVA_OPTIONS="$JAVA_OPTIONS -Dfile.encoding=UTF-8 -mx128m -ms32m ${QUICKSTART?}    -Ddb2_original_lang=${LANG_ORG}"
+##
+    JAVA_OPTIONS="$JAVA_OPTIONS -mx128m -ms32m ${QUICKSTART?}    -Ddb2_original_lang=${LANG_ORG}"
+
+    # only needed for IBM JVMs, but doesn't hurt for non-IBM JVMs.
+    IBM_JAVACOREDIR=/tmp
+    export IBM_JAVACOREDIR
+
+    if [ "X$DB2IJRETEST" != "X" ]; then
+        JAVA_OPTIONS="$JAVA_OPTIONS -Ddb2install.jdktest=$DB2IJRETEST"
+    fi
+
+    JAVA_CLASSPATH="$RUNLOCATION/../../common/launchpad/launchpad/lib/bin.jar:$RUNLOCATION/../../common/launchpad/launchpad/lib/AZX_engine.jar:$RUNLOCATION/../../common/launchpad/launchpad/lib/AZC_ExpressLogger.jar:$RUNLOCATION/../../common/install.jar:$RUNLOCATION/../../common/Common.jar:$RUNLOCATION/codegen.jar:$RUNLOCATION/../../common/jhbasic.jar:$RUNLOCATION/../../common/lap_mri.jar" 
+    JAVA_INTERPRETER="java"
+    JAVA_PATH=""
+    DFLT_JAVA_HOME=""
+
+    # Remove previous setup error file
+    rm -f ${ERRFILE?} 2> /dev/null 1> /dev/null
+
+    if [ "${SHORTLANG?}" != 'en_US' -a -d $RUNLOCATION/../../common/mri/${SHORTLANG?} ]; then
+        JAVA_CLASSPATH="$JAVA_CLASSPATH:$RUNLOCATION/../../common/mri/${SHORTLANG?}/install_mri.jar"
+    fi
+    if [ "${SHORTLANG?}" != 'en_US' -a ! -d $RUNLOCATION/../../common/mri/${SHORTLANG?} ]; then
+        LANG=C
+        export LANG
+    fi
+
+    JAVA_CLASSPATH="$JAVA_CLASSPATH:$RUNLOCATION/../../common/mri/en_US/install_mri.jar"
+
+    # in case it's already set, let's just make sure java doesn't see it.
+    unset CLASSPATH
+
+    # clear out LC_ALL - can cause problems on some platforms
+    unset LC_ALL LC_MESSAGES
+
+    # Only test the local JRE if the DB2USELOCALJRE environment variable is set.
+    if [ "X$DB2USELOCALJRE" != "X" ]; then
+       if [ "X$JAVA_HOME" != "X" ]; then
+
+           if [ -d "$JAVA_HOME/bin/" ]; then
+               JAVA_PATH="$JAVA_HOME/bin/"
+           fi
+
+       fi
+
+       # Test to see if the JRE is present before trying to run the local copy
+       $JAVA_PATH$JAVA_INTERPRETER 1>/dev/null 2>/dev/null
+       rc=$?
+
+       if [ $rc -ne 127 ]; then
+          #The local JRE is present -- try to run it
+          # Start the JRE test class
+          if [ ${DEBUG?} -eq 0 ]; then
+             /bin/echo ""
+             /bin/echo "$JAVA_PATH$JAVA_INTERPRETER $JAVA_OPTIONS -classpath $JAVA_CLASSPATH -Ddb2.nostrict=true -Djava.library.path=${DYLD_LIBRARY_PATH?}:${RUNLOCATION?} DB2JDKTester ${DB2OPTS?} $@ 2> ${ERRFILE?}.running"
+             /bin/echo ""
+          fi 
+          $JAVA_PATH$JAVA_INTERPRETER $JAVA_OPTIONS -classpath $JAVA_CLASSPATH -Ddb2.nostrict=true -Djava.library.path=${DYLD_LIBRARY_PATH?}:${RUNLOCATION?} DB2JDKTester ${DB2OPTS?} "$@" 2> ${ERRFILE?}.running
+          rc=$?
+       else
+          /bin/echo "DBI1378N  db2setup was unable to locate a suitable Java Runtime
+Environment on your computer. If a Java Runtime Environment
+required by DB2 is present, please set your JAVA_HOME environment
+variable and try running the command again."
+       fi
+    fi
+
+    DB2SetupRun="DB2Setup"
+
+    if [ "X$DB2USELOCALJRE" = "X" ]; then
+       # Use JRE from DB2 media
+       JAVA_PATH="$RUNLOCATION../java/jre/bin"
+       if [ "X$DB2WHICHJRE" != "X" ]; then
+           echo "DEBUG:: Installer is using JRE from location: "
+           echo "DEBUG:: ${JAVA_PATH?} "
+       fi
+       if [ ! -d $JAVA_PATH ]; then
+           if [ "X${DFLT_JAVA_HOME?}" != "X" ]; then
+               JAVA_PATH="${DFLT_JAVA_HOME?}/jre/bin"
+               DB2SetupRun="-Ddb2.nostrict=true DB2JDKTester "
+           fi
+       fi
+       if [ ! -d $JAVA_PATH ]; then
+           echo "JRE not found."
+           exit 67
+       fi
+       JAVA_HOME=`/usr/bin/dirname ${JAVA_PATH?}`
+       cd ${RUNLOCATION?}
+       DB2INSTALLER="$JAVA_PATH/$JAVA_INTERPRETER $JAVA_OPTIONS -cp $JAVA_CLASSPATH -Djava.library.path=${DYLD_LIBRARY_PATH?} $DB2SetupRun "
+    fi
+    return ${rc?}
+}
+
+#-----------------------------------------------------------------------#
+#                End of function definitions
+#-----------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------#
+#                             Main program
+#-----------------------------------------------------------------------#
+
+set ${setopts:-+x}
+
+constants             # Set up environment for DB2 Installer
+
+# Process command-line options
+while getopts :r:u:J:t:m:q:f:g:p:hdci:l:wR optchar; do
+    case ${optchar?} in
+        r|u)  # Response file
+            SILENT=0
+            DB2INSTALLER="${CMD_DB2IURE?}"
+
+            if [ -z "${OPTARG?}" ]
+            then
+                usage
+            fi
+            RSPFILE="${OPTARG?}"
+            # Check if absolute path was given
+            chk_abs_path ${RSPFILE?}
+            DB2OPTS="${DB2OPTS?} -r ${RSPFILE?}" 
+            ;;
+        c)  # validate response file only
+            VALIDATEONLY=${TRUE?}
+            DB2OPTS="${DB2OPTS?} -c"
+            ;;
+        J)  # set JAVA_OPTIONS env variable
+            JAVA_OPTIONS="${OPTARG?}"
+            export JAVA_OPTIONS
+            ;;
+        t)  # trace
+            if [ -z "${OPTARG?}" ]
+            then
+                usage
+            fi
+            TRCFILE="${OPTARG?}"
+            # Check if absolute path was given
+            chk_abs_path ${TRCFILE?}
+            IBM_JAVACOREDIR=`/usr/bin/dirname ${TRCFILE?}`
+            export IBM_JAVACOREDIR
+            DB2OPTS="${DB2OPTS?} -t ${TRCFILE?}"
+            TRACE=0
+            ;;
+        d)  # v7-style debug.
+            /bin/rm -f ${TMPDIR?}/db2setup.trc 2> /dev/null
+            DB2OPTS="${DB2OPTS?} -d"
+            TRACE=${TRUE?}
+            DEBUG=${TRUE?}
+            ;;
+        i)  # "in" language
+            GIVEN_LANG="${OPTARG?}"
+            ;;
+        l)  # logfile location
+            if [ -z "${OPTARG?}" ]
+            then
+                usage
+            fi
+            LOGFILE="${OPTARG?}"
+            # Check if absolute path was given
+            chk_abs_path ${LOGFILE?}
+            ERRFILE=`/usr/bin/dirname ${LOGFILE?}`/${ERRFILE_NAME?}
+            ;;
+        f)  # Internal flag
+            NOBACKUP="${OPTARG?}"
+            ;;
+        g)  # Internal flag
+            SILENT=${OPTARG?}
+            ;;
+        m)  # Internal flag
+            RUNDIR="${OPTARG?}"
+            RUNLOCATION="${RUNDIR?}/db2/macos/install/"
+            INSTALLDIR=${RUNLOCATION?}
+            BINDIR=${RUNLOCATION?}/../bin
+            ;;
+        p)  # Internal flag
+            PKGLOC="${OPTARG?}"
+            ;;
+        q)  # Internal flag
+            TMPDIR="${OPTARG?}"
+            ;;
+        h)  # Display help
+            SHOWHELP=0
+            ;;
+        w)  # Internal flag
+            NOT_DB2SETUP=0
+            ;;
+        R)  # Internal flag
+            DB2OPTS="${DB2OPTS?} -R "
+            ;;
+        \?)
+            SHOWHELP=0
+            ;;
+    esac
+done
+
+if [ ${DEBUG?} -eq ${TRUE?} -a ${TRACE?} -ne  ${TRUE?} ]; then
+   DB2OPTS="${DB2OPTS?} -t ${TMPDIR?}/${TRCFILE_NAME?}"
+fi
+
+if [ ${SHOWHELP?} -eq  ${TRUE?} ]
+then
+    usage
+fi
+
+if [ ${VALIDATEONLY?} -eq ${TRUE?} -a ${SILENT?} -ne ${TRUE?} ]; then
+   usage
+fi
+
+chk_options
+
+if [ "X${GIVEN_LANG?}" != "X" ]; then
+   set_lang ${GIVEN_LANG?}
+else
+   set_lang
+fi
+
+if [ "X${TRCFILE?}" != "X" ]; then
+    chk_file_creation ${TRCFILE?}
+fi
+if [ "X${LOGFILE?}" != "X" ]; then
+    chk_file_creation ${LOGFILE?}
+fi
+
+if [ "X${NOBACKUP?}" = "Xnobackup" ]; then
+    DB2OPTS="${DB2OPTS?} -nobackup YES "
+fi
+
+# set db2installer options
+DB2OPTS="${DB2OPTS?} -l ${LOGFILE?} "
+DB2OPTS="${DB2OPTS?} -idir ${RUNLOCATION?} "
+DB2OPTS="${DB2OPTS?} -packageLocation ${PKGLOC?} "
+DB2OPTS="${DB2OPTS?} -action INSTALL "
+
+if [ ${SILENT?} -eq ${FALSE?} ]; then
+    chk_file_creation ${ERRFILE?}
+    if [ "X${DB2_LANG_JAVA?}" != "X" ]; then
+       DB2OPTS="${DB2OPTS?} -i ${DB2_LANG_JAVA?}"
+    fi
+    DB2OPTS="${DB2OPTS?} -e ${ERRFILE_NAME?}"
+    setup_java_env
+    DB2OPTS="${DB2OPTS?} -markerFile ${TMPFILE_NAME?}"
+    RC=$?
+    if [ "X${DB2INSTALLER}" != "X" -a  "X$DB2USELOCALJRE" = "X" ]; then
+       if [ ${DEBUG?} -eq ${TRUE?} ]; then
+          /bin/echo
+          /bin/echo "${DB2INSTALLER?} ${DB2OPTS?} 2> ${ERRFILE?}"
+          /bin/echo
+       fi
+       ${DB2INSTALLER?} ${DB2OPTS?} 2> ${ERRFILE?}
+       RC=$?
+    fi
+else
+    cd ${RUNLOCATION?}
+    ${RUNLOCATION?}/${DB2INSTALLER?} ${DB2OPTS?} 
+    RC=$?
+fi
+
+if [ ${SILENT?} -eq ${TRUE?} ]; then
+  case ${RC?} in
+     0|1)
+         if [ `${PROGDIR?}/../bin/db2usrinf -E` -ne 0 ]; then
+            TMP_USER=`${BINDIR?}/db2usrinf -n -E`
+            /bin/echo 
+            display_msg ${DB2CAT?} 272 'DBI1272I:  To start using the DB2 instance %s, you must set up the DB2 instance environment by sourcing db2profile or db2cshrc in the sqllib directory,, or you can open a new login window of the DB2 instance user.' ${TMP_USER?}
+            /bin/echo
+         fi
+         ;;
+  esac
+fi
+if [ ${DEBUG?} -ne ${TRUE?} ]; then
+   clean_runtime
+fi
+if [ "X${DB2META?}" != "X" -a "X${DB2FS?}" != "X" ]; then
+   if [ ${SILENT?} -eq ${FALSE?} \
+       -a  ${RC?} -eq  ${TRUE?} \
+       -a -d ${DB2META?} -a -f ${DB2FS?} \
+       -a -f ${DB2PROFILE?} ]; then
+      DB2FS_LOG=`dirname ${LOGFILE?}`/${DB2FS_LOG?}
+      . ${DB2PROFILE?}
+      /usr/bin/nohup ${DB2FS?} 2>&1 >${DB2FS_LOG?} &
+   fi
+fi
+
+exit ${RC?}
+

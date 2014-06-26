@@ -1,0 +1,92 @@
+#############################################################################
+# Licensed Materials - Property of IBM
+#
+# Governed under the terms of the International
+# License Agreement for Non-Warranted Sample Code.
+#
+# (C) COPYRIGHT International Business Machines Corp. 2006
+# All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#############################################################################
+#
+# MAKEFILE for C sample installer on Linux
+#
+# Enter one of the following commands 
+#
+#   make all               - Builds all supplied sample programs
+#   make clean             - Erases intermediate files
+#   make cleanall          - Erases all files produced in the build process
+#                            except the original source files
+#
+# The makefile contains the following sections:
+#    1 -- VARIABLES
+#    2 -- MAKE CATEGORIES
+#    3 -- COMMANDS TO MAKE INDIVIDUAL SAMPLES
+#
+#
+#############################################################################
+#                  1 --  VARIABLES                                     
+#############################################################################
+
+CC=gcc
+EXTRA_CFLAG=-O2 -Wall
+
+COPY=cp
+ERASE=rm -f
+
+SAMPLE_OBJS = InstallTester.o
+
+#############################################################################
+#  Generic rule to make objects from C source files
+#############################################################################
+
+.SUFFIXES : .c
+
+%.o: %.c
+	${CC} -c ${EXTRA_CFLAG} -o $@ $<
+
+#############################################################################
+#  2 -- MAKE CATEGORIES
+#              2a - make all
+#              2b - make clean
+#              2c - make cleanall
+#############################################################################
+
+#****************************************************************************
+#                  2a - make all
+#****************************************************************************
+
+all : \
+        InstallTester
+
+#****************************************************************************
+#                  2b - make clean
+#****************************************************************************
+
+clean : 
+	$(ERASE) *.o
+
+#****************************************************************************
+#                  2c - make cleanall
+#****************************************************************************
+
+cleanall : \
+	clean
+	$(ERASE) InstallTester
+
+#############################################################################
+#  3 -- COMMANDS TO MAKE INDIVIDUAL SAMPLES
+#                  3a -  sample installer
+#############################################################################
+
+
+#****************************************************************************
+#                  3a - sample installer
+#****************************************************************************
+
+InstallTester : ${SAMPLE_OBJS}
+	${CC} -o $@ ${SAMPLE_OBJS}
+
+InstallTester.o : InstallTester.c InstallTester.h

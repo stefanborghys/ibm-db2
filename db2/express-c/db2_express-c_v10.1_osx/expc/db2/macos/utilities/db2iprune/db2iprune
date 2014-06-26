@@ -1,0 +1,566 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+
+
+#
+# NAME: db2iprune
+#
+# FUNCTION: db2iprune - prune DB2 products, languages or features
+#
+# USAGE: db2iprune
+#
+#############################################################################
+
+# Options for "set" command
+setopts="${setopts:-+x}"
+set ${setopts?}
+
+# Set the directory name where this file is located.
+curdir=`/bin/pwd -P`
+PROGDIR=`/usr/bin/dirname $0`
+cd ${PROGDIR?}
+PROGDIR=`/bin/pwd -P`
+PROGNAME=`/usr/bin/basename $0`    # Program name
+TRUE=0
+FALSE=1
+
+if [ "X$DB2CURDIR" != "X" ]; then
+    TOPDIR=${DB2CURDIR?}
+else
+    TOPDIR=`/bin/pwd -P`
+fi
+
+#-----------------------------------------------------------------------#
+#               Start of function definitions
+#-----------------------------------------------------------------------#
+
+
+# To display the command syntax
+usage ()
+{
+    display_msg ${DB2CAT?} 322 \
+        "DBI1322I Usage: db2iprune [-h|-?] -r response_file -o output_dir | -c [-t trace_file] [-l log_file]"
+    exit 1
+}
+
+
+# Check if absolute path is given
+chk_abs_path ()
+{
+   set ${setopts?}
+   file_path=$1
+   /bin/echo ${file_path?} | /usr/bin/grep '^/' 2>&1 1>/dev/null
+   return $?
+}
+
+# Default constants for command execution
+constants ()
+{
+    set ${setopts?}
+    INSTALLDIR=${PROGDIR?}/../../install
+    TARDIR=${INSTALLDIR?}
+    PRN_SOURCE=${FALSE?}
+    CMD_DB2IURE=db2iure
+    BINDIR=${INSTALLDIR?}/../bin
+    LOGFILE=""
+    TRCFILE=""
+    
+    TMPDIR=${DB2TMPDIR:-/tmp}
+    # Check if absolute path was given
+    chk_abs_path ${TMPDIR?}
+    if [ $? -ne ${TRUE?} ]; then
+       TMPDIR="${TOPDIR?}/${TMPDIR?}"
+    fi
+
+    RUNLOCATION=${TMPDIR?}/db2.tmp.$$
+    DB2OPTS=""
+
+    if [ `${INSTALLDIR?}/../bin/db2usrinf -E` -ne 0 ]; then
+       TMP_USER=`${INSTALLDIR?}/../bin/db2usrinf -n -E`
+       LOGFILE=${TMPDIR?}/db2iprune_${TMP_USER?}.log #default
+       RUNLOCATION=${TMPDIR?}/db2_${TMP_USER?}.tmp.$$
+    else
+       LOGFILE=${TMPDIR?}/db2iprune.log #default
+    fi
+
+    RUNDIR=${RUNLOCATION?}
+
+    PATH=".:"${PATH}
+    export PATH
+
+    LIBPATH_ORG=${LIBPATH}
+    LIBPATH=.:${INSTALLDIR?}:${LIBPATH}
+    export LIBPATH
+
+    LD_LIBRARY_PATH_ORG=${LD_LIBRARY_PATH}
+    LD_LIBRARY_PATH=.:${INSTALLDIR?}:${LD_LIBRARY_PATH}
+    export LD_LIBRARY_PATH
+
+    SHLIB_PATH_ORG=${SHLIB_PATH}
+    SHLIB_PATH=.:${INSTALLDIR?}:${SHLIB_PATH}
+    export SHLIB_PATH
+ 
+    LANG_ORG=${LANG}
+    export LANG_ORG
+    set_lang
+}
+
+
+set_lang_internal ()
+{
+    set ${setopts?}
+    bindir="$1"
+    msgdir="$2"
+    lang="$3"
+
+
+
+
+    CMD_DB2LANGDIR="${bindir?}/db2langdir"
+
+    if [ "X$lang" != "X" ]; then
+       LANG_CUSTOM=0
+    else
+       LANG_CUSTOM=1
+    fi
+    # Default locale name and locale-specific message directory
+    
+    LANG=${LANG:-C}
+    locname=${LANG?}
+    
+    if [ ${LANG_CUSTOM?} -eq 0 ]; then
+       locname=`${CMD_DB2LANGDIR?} ${lang?} -locale`
+       DB2_LANG_JAVA=${locname?}
+    fi
+
+    langdir=`${CMD_DB2LANGDIR?} ${locname?}`
+    clangdir=`${CMD_DB2LANGDIR?} C`
+
+    if [ -f ${msgdir?}/${langdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${langdir?}/db2install.cat"
+        LANGUAGEDIR=${langdir?}
+    elif [ -f ${msgdir?}/${clangdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${clangdir?}/db2install.cat"
+        LANGUAGEDIR=${clangdir?}
+    else
+        /bin/echo "DBI1055E The message file db2install.cat cannot be found."
+        /bin/echo
+        /bin/echo "Explanation:  The message file required by this"
+        /bin/echo "script is missing from the system; it may have been"
+        /bin/echo "deleted or the database products may have been loaded"
+        /bin/echo "incorrectly."
+        /bin/echo
+        /bin/echo "User Response:  Verify that the product option containing"
+        /bin/echo "the message file is installed correctly.  If there are"
+        /bin/echo "verification errors; reinstall the product option."
+        exit 67
+    fi
+
+    # check if the locale exists.  If not, we'll set LANG to C for any
+    # subprocesses.
+    /usr/bin/locale -a 2> /dev/null | grep '^'${locname?}'$' > /dev/null
+    if [ $? -ne 0 ]
+    then
+        locname=C
+    fi
+
+    # if a language was passed in, set LANG - but if not, leave it alone.
+    # (if it isn't a valid language, well, try resetting anyway)
+    if [ ${LANG_CUSTOM?} -eq 0 ]
+    then
+        /usr/bin/locale -a 2> /dev/null | grep '^'${LANG:-C}'$' > /dev/null
+        if [ $? -eq 0 ]; then
+            LANG=${locname?}
+        else 
+            # if locname is valid, set LANG to locname
+            /usr/bin/locale -a 2> /dev/null | grep '^'${locname:-C}'$' > /dev/null
+            if [ $? -eq 0 ]; then
+                LANG=${locname?}
+            fi
+        fi
+    fi
+
+    # Set LANG and NLSPATH variables for use by dspmsg command
+    NLSPATH="${msgdir?}/%L/%N:${msgdir?}/${clangdir?}/%N"
+    SHORTLANG=`${CMD_DB2LANGDIR?} ${LANG:-C} -short`
+
+    export LANG NLSPATH
+}
+
+set_lang ()
+{
+    set ${setopts?}
+    set_lang_internal ${BINDIR?} ${INSTALLDIR?}/locale $1
+}
+
+#-----------------------------------------------------------------------
+# Name       - display_msg
+# Function   - Displays a message from the message catalog
+# Parameters - $1 - name of the message catalog
+#            - $2 - message number
+#            - $3 - default message string
+#            - $4,$5,$6 - arguments to substitute in msg string, if needed
+#-----------------------------------------------------------------------
+display_msg()
+{
+    set ${setopts?}
+    unset catname msgid deftmsg msgstr
+    catname="$1"
+    msgid=$2
+    deftmsg="$3"
+
+    shift;shift;shift
+
+
+     ${BINDIR?}/disp_msg 1 ${msgid} ${catname} \
+     "${deftmsg}" $@ 2>&1 # | /usr/bin/tee -a ${DB2INSTLOG?}
+
+
+} # end of display_msg()
+
+
+
+
+#-----------------------------------------------------------------------
+# Name       - find_free_space
+# Function   - returns the available space in bytes of the filesystem passed 
+#              as parameter
+# Parameters - $1 filesystem to check
+#
+#-----------------------------------------------------------------------
+find_free_space()
+{
+    set ${setopts?}
+
+    dirname2="$1"
+    free_space_in_fs=0
+
+
+    output_df=`/bin/df -k ${dirname2?} | /usr/bin/tail -n 1 `
+
+
+
+    free_space_in_fs=`/bin/echo ${output_df?} | /usr/bin/awk '{if ($4 !~ /%/) {print $4} else {print $3}}' `
+
+
+    return 0
+
+}
+
+
+#-----------------------------------------------------------------------
+# Name       - copy_install_local
+# Function   - copies the tar.gz installer files to /tmp
+# Parameters - none
+#-----------------------------------------------------------------------
+copy_install_local()
+{
+    set ${setopts?}
+    
+    silent_tar_file="silent.tar.gz"
+    silent_size=`gunzip -l ${TARDIR?}/${silent_tar_file?} | /usr/bin/tail -n 1 | /usr/bin/awk {'print $2'}`
+    
+    gui_tar_file="gui.tar.gz"
+    gui_size=`gunzip -l ${TARDIR?}/${gui_tar_file?} | /usr/bin/tail -n 1 | /usr/bin/awk {'print $2'}`
+    
+    required_space=`expr ${silent_size?}`
+    if [ ${SILENT?} -eq 1 ]; then
+        required_space=`expr ${required_space?} + ${gui_size?}`
+        # add padding for the common launchpad code added in cobra (1MB)
+        lpad_space=1024
+        # add 170MB for memory/swap space (usually only a problem on sun64)
+	swap_space=0
+        
+    fi
+
+    # convert required space to 1024k blocks
+    required_space=`expr ${required_space?} / 1024`
+
+    # Pad 2MB for log files
+    required_space=`expr ${required_space?} + 2048`
+    
+    if [ ${SILENT?} -eq 1 ]; then
+        required_space=`expr ${required_space?} + ${lpad_space?} + ${swap_space?}`
+    else
+        required_space=`expr ${required_space?}`
+    fi
+
+    # Pad 20MB for trace files if required
+    if [ ${TRACE?} -eq 0 ]; then
+        required_space=`expr ${required_space?} + 20480`
+    fi
+    
+    # Over-riding the calculated required space (not accurate) with a hardcoded 500 MB (wsdbu00577652)
+    required_space=512000
+
+    find_free_space ${TMPDIR?}
+    
+    if [ ${required_space} -gt ${free_space_in_fs?} -a ${TMP_FREE_SPACE_CHK:-${TRUE?}} -eq ${TRUE?} ]; then
+        display_msg ${DB2CAT?} 5005 \
+            "Disk space needed = %s KB  Available = %s KB\n" \
+                ${required_space?} ${free_space_in_fs?}
+        display_msg ${DB2CAT?} 80 \
+            "DBI1080E Disk full.\n" \
+                ${TMPDIR?} ${required_space?} ${free_space_in_fs?}
+        exit 67
+    else
+        /bin/mkdir ${RUNLOCATION?}
+        cd ${RUNLOCATION?}
+        gunzip -c ${TARDIR?}/${silent_tar_file?} | tar xf -
+        # copy lic file 
+        /bin/cp -r ${TARDIR?}/../../license/ ${RUNLOCATION?}/db2/
+        # copy the spec file
+        /bin/cp ${TARDIR?}/../../spec ${RUNLOCATION?}/db2/
+        # copy .<prod> files
+        /bin/cp ${TARDIR?}/../../.[a-zA-Z]* ${RUNLOCATION?}/db2/
+        if [ ${SILENT?} -eq 1 ]; then
+            gunzip -c ${TARDIR?}/${gui_tar_file?} | tar xf -
+            # The ${TARDIR?}/../../../doc doesn't exist - wsdbu00888724
+            #/bin/cp -r ${TARDIR?}/../../../doc/ ${RUNLOCATION?}/
+        fi
+
+
+
+        RUNLOCATION="${RUNLOCATION?}/db2/macos/install/"
+        # copy .fsinfo
+        /bin/cp ${TARDIR?}/.fsinfo ${RUNLOCATION?}/.fsinfo
+        
+    ## show a loading graphic before we run time intensive operations
+    if [ ${SILENT?} -eq 1 ]; then
+        TMPFILE_NAME=${TMPDIR?}/db2load.tmp
+        export TMPFILE_NAME
+        ${RUNLOCATION?}../java/jre/bin/java -jar ${RUNLOCATION?}../../common/install.jar ${TMPFILE_NAME?} &
+    fi
+
+        #Update embedded runtime path
+        if [ -f ${RUNLOCATION?}/db2chgpath ]; then
+           ${RUNLOCATION?}/db2chgpath 1>/dev/null
+        fi
+    fi
+    
+    # copy .fsinfo and .<prod> files 
+
+}
+
+
+
+
+
+
+#-----------------------------------------------------------------------
+# Name       - get_package_location
+# Function   - This function will determine the base location of the install
+#              image, based on where the installer is running from $INSTALLDIR
+# Parameters - none
+#
+#-----------------------------------------------------------------------
+get_package_location()
+{
+    setopts="${setopts:-+x}"
+    set ${setopts?}
+
+    tmpDir=`/bin/pwd -P`
+    BASEDIR=${INSTALLDIR?}/../../../
+    cd ${BASEDIR?}
+    BASEDIR=`/bin/pwd -P`
+    PKGLOC=${BASEDIR?}
+    cd ${tmpDir?}
+
+}
+
+
+
+
+
+sh_which_ ()
+{
+    set ${setopts?}
+
+    file=$1
+    search_path=$2
+    if [ -z "${search_path?}" ]
+    then
+      search_path="$PATH"
+    fi
+    /bin/echo ${search_path?} | /usr/bin/sed -e 's/:/\
+/g' | while read path; do
+    if [ -x "${path?}/${file?}" ]
+    then
+        /bin/echo "${path?}/${file?}"
+        return 0
+    fi
+    done
+}
+
+sh_which ()
+{
+    set ${setopts?}
+    text=`sh_which_ "$@"`
+    # set return code based on whether there is any output.
+    if [ -z "${text?}" ]
+    then
+        return 1
+    else
+        echo "${text?}"
+        return 0
+    fi
+}
+
+check_gunzip ()
+{
+    set ${setopts?}
+    sh_which gunzip > /dev/null
+    if [ $? -ne 0 ]
+    then
+        display_msg ${DB2CAT?} 58 "DBI1058E gunzip command not found."
+        exit 67
+    fi
+}
+
+chk_file_creation ()
+{
+    set ${setopts?}
+    file_chk=$1
+    /usr/bin/touch ${file_chk?} 2>/dev/null 1>/dev/null
+    if [ $? -ne 0 ]; then
+       display_msg ${DB2CAT?} 503 'An error was encountered when opening or writing to file,%s.' ${file_chk?}
+       /bin/echo ""
+       exit 67
+    fi
+}
+
+#-----------------------------------------------------------------------#
+#                End of function definitions
+#-----------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------#
+#                             Main program
+#-----------------------------------------------------------------------#
+
+set ${setopts:-+x}
+
+constants             # Set up environment for DB2 Installer
+
+get_package_location  # Set install image location
+
+check_gunzip          # ensure gunzip is available
+
+# Process command-line options
+TRACE=${FALSE?}
+SILENT=${FALSE?}
+COPY_SOURCE=${FALSE?}
+PRN_SOURCE=${FALSE?}
+
+while getopts :r:o:t:l:ch optchar; do
+    case ${optchar?} in
+        r)  # Response file
+            SILENT=0
+            DB2INSTALLER="${CMD_DB2IURE?}"
+            RSPFILE="${OPTARG?}"
+            # Check if absolute path was given
+            chk_abs_path ${RSPFILE?}
+            if [ $? -ne ${TRUE?} ]; then
+                 RSPFILE="${TOPDIR?}/${RSPFILE?}"
+            fi
+            DB2OPTS="${DB2OPTS?} -r ${RSPFILE?} " 
+            ;;
+        o)  # output directory
+            COPY_SOURCE=${TRUE?}
+            OUTPUT_DIR="${OPTARG?}"
+            chk_abs_path ${OUTPUT_DIR?}
+            if [ $? -ne ${TRUE?} ]; then
+                 OUTPUT_DIR="${TOPDIR?}/${OUTPUT_DIR?}"
+            fi
+            DB2OPTS="${DB2OPTS?} -o ${OUTPUT_DIR?} "
+            ;;
+        c)  # prune source image
+            PRN_SOURCE=${TRUE?}
+            DB2OPTS="${DB2OPTS?} -o "   # If the user gives option -c then we will just pass -o without any arguments	    
+            ;;
+        t)  # trace
+            TRCFILE="${OPTARG?}"
+            # Check if absolute path was given
+            chk_abs_path ${TRCFILE?}
+            if [ $? -ne ${TRUE?} ]; then
+                 TRCFILE="${TOPDIR?}/${TRCFILE?}"
+            fi
+            DB2OPTS="${DB2OPTS?} -t ${TRCFILE?} "
+            TRACE=${TRUE?}
+            ;;
+        l)  # logfile location
+            LOGFILE="${OPTARG?}"
+            # Check if absolute path was given
+            chk_abs_path ${LOGFILE?}
+            if [ $? -ne ${TRUE?} ]; then
+                 LOGFILE="${TOPDIR?}/${LOGFILE?}"
+            fi
+            ;;
+     h|\?)  # Display help
+            usage
+            ;;
+    esac
+done
+
+if [ ${SILENT?} -eq ${FALSE?} ]; then
+   usage
+fi
+
+if [ ${COPY_SOURCE?} -eq ${TRUE?} -a ${PRN_SOURCE?} -eq ${TRUE?} ]; then
+   usage
+fi
+
+if [ ${COPY_SOURCE?} -eq ${FALSE?} -a ${PRN_SOURCE?} -eq ${FALSE?} ]; then
+   usage
+fi
+
+if [ "X${TRCFILE?}" != "X" ]; then
+    chk_file_creation ${TRCFILE?}
+fi
+
+if [ "X${LOGFILE?}" != "X" ]; then
+    chk_file_creation ${LOGFILE?}
+fi
+
+if [ ${DB2NOTMPCOPY:-FALSE} = "TRUE" ]; then
+    RUNLOCATION="${INSTALLDIR?}/"
+else  
+    copy_install_local          # copy installer to local temp location
+fi
+
+DB2OPTS="${DB2OPTS?} -l ${LOGFILE?} "
+DB2OPTS="${DB2OPTS?} -idir ${RUNLOCATION?} "
+DB2OPTS="${DB2OPTS?} -packageLocation ${PKGLOC?} "
+DB2OPTS="${DB2OPTS?} -action PRUNE "
+
+display_msg ${DB2CAT?} 446 \
+   'DBI1446I The %s command is running, please wait.' ${PROGNAME?}
+
+# set up some environment variables
+export TMPDIR
+unset LD_LIBRARY_PATH_64 # can cause problems on some OS's if set.
+
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RUNLOCATION:$RUNLOCATION/../lib64:$RUNLOCATION/../lib32
+export LD_LIBRARY_PATH
+
+LIBPATH=$LIBPATH:$RUNLOCATION:$RUNLOCATION/../lib64:$RUNLOCATION/../lib32
+export LIBPATH
+
+SHLIB_PATH=$SHLIB_PATH:$RUNLOCATION:$RUNLOCATION/../lib64:$RUNLOCATION/../lib32
+export SHLIB_PATH
+
+
+
+exec ${RUNLOCATION?}/${DB2INSTALLER?} ${DB2OPTS?}

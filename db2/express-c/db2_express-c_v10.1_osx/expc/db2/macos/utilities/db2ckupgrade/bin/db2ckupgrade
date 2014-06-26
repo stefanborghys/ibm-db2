@@ -1,0 +1,615 @@
+#!/bin/sh
+#############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# "Restricted Materials of IBM" 
+#
+# (C) COPYRIGHT IBM Corp. 1993, 2012 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#############################################################################
+
+
+
+#
+# NAME: db2ckupgrade
+#
+# FUNCTION: db2ckupgrade - verify that a database can be upgraded.
+#
+# USAGE: db2ckupgrade <-e|db_name> [-u user] [-p passwd] -l logpath
+#          -e|db_name  -e will check all databases, or just the named database
+#          -u user     name of the instance owner
+#          -p passwd   password of user
+#          -l logpath  full path name of the log file
+#
+########################################################################
+
+# Options for "set" command
+setopts="${setopts:-+x}"
+set ${setopts?}
+
+# Current DB2 installation directory
+curdir=`/bin/pwd`
+DB2DIR=`dirname $0`
+cd ${DB2DIR?}
+DB2DIR=`/bin/pwd`
+cd ${DB2DIR?}
+DB2DIR=`dirname ${DB2DIR?}`
+cd ${curdir?}
+unset curdir
+
+
+
+# Set the directory name where this file is located.
+curdir=`/bin/pwd -P`
+PROGDIR=`/usr/bin/dirname $0`
+cd ${PROGDIR?}
+PROGDIR=`/bin/pwd -P`
+cd ${curdir?}
+
+PROGNAME=`/usr/bin/basename $0`       # Program name
+
+INSTALLDIR=`/usr/bin/dirname ${PROGDIR?}`/install
+BINDIR=`/usr/bin/dirname ${PROGDIR?}`/bin
+
+TRUE=0
+FALSE=1
+DB2INSTLOG="/tmp/db2ckupgrade.log.$$"
+
+
+OLD_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+unset LD_LIBRARY_PATH
+
+OLD_LD_LIBRARY_PATH_32="$LD_LIBRARY_PATH_32"
+unset LD_LIBRARY_PATH_32
+
+OLD_LD_LIBRARY_PATH_64="$LD_LIBRARY_PATH_64"
+unset LD_LIBRARY_PATH_64
+
+OLD_SHLIB_PATH="$SHLIB_PATH"
+unset SHLIB_PATH
+
+
+
+
+# Find the home directory associated with the named user
+# This is used in place of chk_version, which requires root user to run
+find_mighome()
+{
+    trac find_mighome $@
+    set ${setopts?}
+
+    curuser=$1
+    db2proddir=""
+
+
+
+    INSTHOME=`${DB2DIR?}/bin/db2usrinf -d ${curuser?}`
+
+
+
+    if [ $? -ne 0 -o "X${INSTHOME?}" = "X" ]; then
+        display_msg ${DB2CAT?} 131 \
+            'DBI1131E The user ID %s is invalid.\n' ${curuser?}
+        exit 4
+    fi
+
+    dmsg "Home directory of instance to upgrade is ${INSTHOME?}"
+
+    instbindir="${INSTHOME?}/sqllib/bin"     # sqllib/bin dir of the instance
+    instlibdir="${INSTHOME?}/sqllib/lib"     # sqllib/lib dir of the instance
+
+    if [ ! -d ${instbindir?} ]; then
+        display_msg ${DB2CAT?} 97 \
+            'DBI1097E The directory %s does not exist.\n' ${instbindir?}
+        exit 4
+    fi
+
+    # For DB2 Version 9 or later, the attribute V is defined in
+    # sqllib/ctrl/.instuse file. We need to get the DB2 install
+    # location directly from the .instuse
+
+    INSTUSE_VALUE="PRE_V9"
+    check_instuse=${FALSE?}
+    query_instuse_string ${curuser?} V "PRE_V9"
+    if [ "X${INSTUSE_VALUE?}" != "XPRE_V9" ]; then
+       check_instuse=${TRUE?}
+    fi
+
+    # use instuse for V8 - for multiple FP implementation
+    query_instuse_string ${INSTNAME?} INSTVER 0
+
+    # if INSTVER is 81 then it is a V8 instance - can be anyone of the multiple FP
+    if [ "X${INSTUSE_VALUE?}" = "X81" -o ${check_instuse} -eq ${TRUE?} ]; then
+           # find out what is its install path - use that to set db2proddir
+           query_instuse_string ${INSTNAME?} DB2DIR ${DB2DIR?}
+           db2proddir=${INSTUSE_VALUE?}
+    fi
+
+    trax find_mighome
+}
+
+# pass arguments into db2ckmig_exe
+call_db2ckmigexe()
+{
+    trac call_db2ckmigexe $@
+    set ${setopts?}
+
+    # Find out what level of DB2 is associated with INSTNAME and set LIBPATH accordingly
+    find_mighome ${INSTNAME?}
+    if [ ${DB2CKUPGRADE_CD?} -eq ${FALSE?} ]; then
+       find_mighome_internal ${INSTNAME?}
+    fi
+
+    DB2IPRDDIR="${db2proddir?}"   # DB2 product dir for instance INSTNAME
+
+    # depending on whether existing instance is 32-bit or 64-bit, we need
+    # to use a different binary.
+    # default to 32-bit
+    DB2LIB="lib32"
+    InstanceBitWidth
+    IBW=$?
+    if [ ${IBW?} -eq 32 ]
+    then
+        CMD_DB2CKMIGEXE=${CMD_DB2CKMIGEXE32?}
+
+
+    elif [ ${IBW?} -eq 64 ]
+    then
+        CMD_DB2CKMIGEXE=${CMD_DB2CKMIGEXE64?}
+        DB2LIB="lib64"
+    else
+        # fallback
+        CMD_DB2CKMIGEXE=${CMD_DB2CKMIGEXE32?}
+    fi
+
+
+
+
+    LIBPATH="${DB2IPRDDIR?}/${DB2LIB?}"
+    export LIBPATH
+
+
+
+    # if the ckmig tool for this bitwidth doesn't exist, don't fret.
+    if [ -f ${CMD_DB2CKMIGEXE?} ]
+    then
+       # pass argument into db2ckmig_exe
+       ${CMD_DB2CKMIGEXE?} ${ARGLIST?}
+       migrc=$?
+    fi
+
+
+
+
+    unset LD_LIBRARY_PATH 
+
+
+
+
+    trax call_db2ckmigexe
+}
+# Default values for command line options
+defaultopts()
+{
+    # trac defaultopts $@
+
+    DEBUG=${FALSE?}               # Debug mode is FALSE
+    NODISPLAY=${FALSE?}
+    migrc=${TRUE?}
+    MSGCOUNT=0
+
+    INSTNAME=""           # Initialize variable for instance name
+    INSTHOME=""           # Initialize variable for instance home directory
+
+    CMD_DB2CKMIGEXE32="${DB2CKUPGRADEDIR?}/db2ckupgrade32_exe"
+    CMD_DB2CKMIGEXE64="${DB2CKUPGRADEDIR?}/db2ckupgrade64_exe"
+
+    # trax defaultopts
+}
+
+restoreLibVars()
+{
+    trac restoreLibVars
+    set ${setopts?}
+
+    
+    LD_LIBRARY_PATH="$OLD_LD_LIBRARY_PATH"
+    if [ "X${LD_LIBRARY_PATH?}" != "X" ]; then
+       export LD_LIBRARY_PATH
+    else
+       unset LD_LIBRARY_PATH
+    fi
+
+    unset OLD_LD_LIBRARY_PATH
+    
+    LD_LIBRARY_PATH_32="$OLD_LD_LIBRARY_PATH_32"
+    if [ "X${LD_LIBRARY_PATH_32?}" != "X" ]; then
+       export LD_LIBRARY_PATH_32
+    else
+       unset LD_LIBRARY_PATH_32
+    fi
+
+    unset OLD_LD_LIBRARY_PATH_32
+    
+    LD_LIBRARY_PATH_64="$OLD_LD_LIBRARY_PATH_64"
+    if [ "X${LD_LIBRARY_PATH_64?}" != "X" ]; then
+       export LD_LIBRARY_PATH_64
+    else
+       unset LD_LIBRARY_PATH_64
+    fi
+
+    unset OLD_LD_LIBRARY_PATH_64
+    
+    SHLIB_PATH="$OLD_SHLIB_PATH"
+    if [ "X${SHLIB_PATH?}" != "X" ]; then
+       export SHLIB_PATH
+    else
+       unset SHLIB_PATH
+    fi
+
+    unset OLD_SHLIB_PATH
+    
+
+    trax restoreLibVars 
+}
+
+set_lang ()
+{
+    set ${setopts?}
+    set_lang_internal ${DB2DIRBIN?} ${DB2DIRMSG?}
+#    ARGLIST="${ARGLIST?} -i ${DB2DIR?}"
+}
+
+
+set_lang_internal ()
+{
+    set ${setopts?}
+    bindir="$1"
+    msgdir="$2"
+    lang="$3"
+
+
+
+
+    CMD_DB2LANGDIR="${bindir?}/db2langdir"
+
+    if [ "X$lang" != "X" ]; then
+       LANG_CUSTOM=0
+    else
+       LANG_CUSTOM=1
+    fi
+    # Default locale name and locale-specific message directory
+    
+    LANG=${LANG:-C}
+    locname=${LANG?}
+    
+    if [ ${LANG_CUSTOM?} -eq 0 ]; then
+       locname=`${CMD_DB2LANGDIR?} ${lang?} -locale`
+       DB2_LANG_JAVA=${locname?}
+    fi
+
+    langdir=`${CMD_DB2LANGDIR?} ${locname?}`
+    clangdir=`${CMD_DB2LANGDIR?} C`
+
+    if [ -f ${msgdir?}/${langdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${langdir?}/db2install.cat"
+        LANGUAGEDIR=${langdir?}
+    elif [ -f ${msgdir?}/${clangdir?}/db2install.cat ]; then
+        DB2CAT="${msgdir?}/${clangdir?}/db2install.cat"
+        LANGUAGEDIR=${clangdir?}
+    else
+        /bin/echo "DBI1055E The message file db2install.cat cannot be found."
+        /bin/echo
+        /bin/echo "Explanation:  The message file required by this"
+        /bin/echo "script is missing from the system; it may have been"
+        /bin/echo "deleted or the database products may have been loaded"
+        /bin/echo "incorrectly."
+        /bin/echo
+        /bin/echo "User Response:  Verify that the product option containing"
+        /bin/echo "the message file is installed correctly.  If there are"
+        /bin/echo "verification errors; reinstall the product option."
+        exit 67
+    fi
+
+    # check if the locale exists.  If not, we'll set LANG to C for any
+    # subprocesses.
+    /usr/bin/locale -a 2> /dev/null | grep '^'${locname?}'$' > /dev/null
+    if [ $? -ne 0 ]
+    then
+        locname=C
+    fi
+
+    # if a language was passed in, set LANG - but if not, leave it alone.
+    # (if it isn't a valid language, well, try resetting anyway)
+    if [ ${LANG_CUSTOM?} -eq 0 ]
+    then
+        /usr/bin/locale -a 2> /dev/null | grep '^'${LANG:-C}'$' > /dev/null
+        if [ $? -eq 0 ]; then
+            LANG=${locname?}
+        else 
+            # if locname is valid, set LANG to locname
+            /usr/bin/locale -a 2> /dev/null | grep '^'${locname:-C}'$' > /dev/null
+            if [ $? -eq 0 ]; then
+                LANG=${locname?}
+            fi
+        fi
+    fi
+
+    # Set LANG and NLSPATH variables for use by dspmsg command
+    NLSPATH="${msgdir?}/%L/%N:${msgdir?}/${clangdir?}/%N"
+    SHORTLANG=`${CMD_DB2LANGDIR?} ${LANG:-C} -short`
+
+    export LANG NLSPATH
+}
+
+LD_LIBRARY_PATH=${BINDIR?}/../../../install:${BINDIR?}/../../lib64
+export LD_LIBRARY_PATH
+
+DB2CKUPGRADEDIR="${BINDIR?}"
+DB2CKUPGRADE_CD=${TRUE?}
+DB2DIRBIN="${BINDIR?}"
+DB2DIRMSG="${INSTALLDIR?}/locale"
+DB2INSTLOG=/tmp/db2ckupgrade$$.log
+
+# Find the home dir for given user ID. Set environment variable USERHOME
+find_homedir ()
+{
+    trac find_homedir $@
+    set ${setopts?}
+
+    username=$1
+
+
+
+    # is the user valid?
+    if ${DB2DIR?}/bin/db2usrinf -q ${username?}
+    then
+        USERHOME=`${DB2DIR?}/bin/db2usrinf -d ${username?}`
+    else
+        display_msg ${DB2CAT?} 131 \
+            'DBI1131E The user ID %s is invalid.' ${username?}
+        stop_prog 1
+    fi
+
+    dmsg "User home dir = ${USERHOME?}"
+
+
+
+    trax find_homedir
+    return 0
+}
+#-----------------------------------------------------------------------
+# Name      - InstanceBitWidth
+# Functions - Returns Bit Width of Instance
+# Params.   - None
+# Returns   - 32 or 64
+#-----------------------------------------------------------------------
+InstanceBitWidth ()
+{
+    trac InstanceBitWidth $@
+    set ${setopts?}
+    find_homedir ${INSTNAME?}
+    ibw=32
+    tmp_instuse_file="${USERHOME?}/sqllib/ctrl/.instuse"
+    if [ -f "${USERHOME?}/sqllib/.instuse" ]; then
+         tmp_instuse_file="${USERHOME?}/sqllib/.instuse"
+    fi
+    /usr/bin/grep 'BitWidth=64' "${tmp_instuse_file?}" 1>/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+            ibw=64
+    fi
+    trax InstanceBitWidth
+    return ${ibw?}
+}
+
+# To display a message when a function is called
+trac ()
+{
+    if [ ${DEBUG?} -eq ${TRUE?} ]; then
+        /bin/echo "## Entering: $*" 2>&1 | /usr/bin/tee -a ${DB2INSTLOG?}
+    fi
+}
+
+# To display a message when exiting a function
+trax()
+{
+    if [ ${DEBUG?} -eq ${TRUE?} ]; then
+        /bin/echo "## Exiting: $*"  2>&1 | /usr/bin/tee -a ${DB2INSTLOG?}
+    fi
+}
+
+# To display a message when "debug" is set
+dmsg ()
+{
+    if [ ${DEBUG?} -eq ${TRUE?} ]; then
+        /bin/echo "## $*"  2>&1 | /usr/bin/tee -a ${DB2INSTLOG?}
+    fi
+}
+
+#-----------------------------------------------------------------------
+# Name       - display_msg
+# Function   - Displays a message from the message catalog
+# Parameters - $1 - name of the message catalog
+#            - $2 - message number
+#            - $3 - default message string
+#            - $4,$5,$6 - arguments to substitute in msg string, if needed
+#-----------------------------------------------------------------------
+display_msg()
+{
+    set ${setopts?}
+
+    unset catname msgid deftmsg msgstr warnmsg infomsg
+    catname="$1"
+    msgid=$2
+    deftmsg="$3"
+    warnmsg=${FALSE?}
+    infomsg=${FALSE?}
+
+    /bin/echo ${deftmsg?} | /usr/bin/grep "DBI....W" 1>/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        warnmsg=${TRUE?}
+    fi
+
+    /bin/echo ${deftmsg?} | /usr/bin/grep "DBI....I" 1>/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        infomsg=${TRUE?}
+    fi
+
+    # Do not display message if NODISPLAY is set
+    if [ ${NODISPLAY?} -eq ${TRUE?} ]; then
+        return ${TRUE?}
+    fi
+
+    # Increment the message count only if it is not a warning or information
+    if [ ${warnmsg?} -eq ${FALSE?} -a ${infomsg?} -eq ${FALSE?} ]; then
+        MSGCOUNT=`/bin/expr "${MSGCOUNT?}" + 1`
+    fi
+
+    shift ; shift ; shift
+
+
+
+
+    disp_msg_file="${DB2DIR?}/instance/disp_msg"
+    if [ ! -f ${disp_msg_file?} ]; then
+       disp_msg_file="${DB2DIR?}/bin/disp_msg"
+       if [ ! -f ${disp_msg_file?} ]; then
+          disp_msg_file="${DB2DIR?}/../disp_msg"
+       fi   
+    fi   
+
+    ${disp_msg_file?} 1 ${msgid} ${catname} "${deftmsg}" "$@" 2>&1 | /usr/bin/tee -a ${DB2INSTLOG?}
+
+
+
+}
+
+#-----------------------------------------------------------------------#
+#               Start of function definitions
+#-----------------------------------------------------------------------#
+# This function queries the current .instuse to find a string
+query_instuse_string()
+{
+    trac query_instuse_string $@
+    set ${setopts?}
+
+    INST2QUERY="$1"
+    DB2FTN="$2"
+    DEFAULT="$3"
+    BYDAS="$4"
+
+    CMD_DB2FUPDT=${DB2DIR?}/bin/db2fupdt
+    find_homedir ${INST2QUERY?}
+    INSTUSE=${USERHOME?}/sqllib/ctrl/.instuse
+    if [ -f $INSTUSE ]; then
+        INSTUSE=${USERHOME?}/sqllib/ctrl/.instuse
+    else
+        INSTUSE=${USERHOME?}/sqllib/.instuse
+    fi
+    if [ "X${BYDAS?}" = "Xdas" ]; then
+        INSTUSE=${USERHOME?}/das/ctrl/.instuse
+    fi
+
+    INSTUSE_VALUE=`${CMD_DB2FUPDT?} -f ${INSTUSE?} -p ${DB2FTN?}`
+    rc=$?
+
+    # if no output (error), assume default.
+    if [ ${rc?} -ne 0 ]
+    then
+        INSTUSE_VALUE="${DEFAULT?}"
+    fi
+    trax query_instuse_string
+    return ${rc?}
+}
+
+chk_nonroot ()
+{
+    set ${setopts?}
+
+    if [ `${BINDIR?}/db2usrinf -E` -eq 0 ]; then
+        display_msg ${DB2CAT?} 51 \
+            'DBI1051E You cannot execute this program as root.'
+        /bin/rm -f ${DB2INSTLOG?}
+        exit 1
+    fi
+}
+# To display the command syntax
+syntax ()
+{
+                display_msg ${DB2CAT?} 389 \
+                'DBI1389I Usage: %s <-e|db_name> -l logpath [-u user] [-p passwd]\n' ${PROGNAME?}
+    exit 1
+}
+
+#-----------------------------------------------------------------------#
+#                End of function definitions
+#-----------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------#
+#                             Main program
+#-----------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------#
+#                             Main program
+#-----------------------------------------------------------------------#
+
+defaultopts        # Define default values for command-line options
+set_lang
+chk_nonroot
+
+# Process command-line options
+case $# in
+    0)
+        syntax ;;
+    *)
+        ARGLIST=$@
+        # cycle through the arguments to see if the user passed in a username
+        while [ "X$1" != "X-u" -a "X$1" != "X/u" -a "X$1" != "X" ];
+        do
+            if [ "X$1" = "X-d" ]; then
+               DEBUG=${TRUE?}
+            fi
+	    if [ "X$1" = "X-h" -o "X$1" = "X-?" ]; then
+		syntax
+	    fi
+            shift
+        done
+        if [ "X$1" = "X-u" -a "X$1" != "X/u" ]; then
+            shift
+            INSTNAME=$1
+            # if -u is used without specifying a name, exit 1
+            if [ "X${INSTNAME?}" = "X" ]; then
+                syntax
+                stop_prog 1
+            fi
+        fi
+        ;;
+esac
+
+set ${setopts?}
+
+ARGLIST=`POSIXLY_CORRECT=1 /bin/echo ${ARGLIST?} | /usr/bin/sed 's/-d//g'`
+
+ARGLIST="${ARGLIST?} -i ${DB2DIR?}"
+
+# If no username is passed in, then use the current user 
+if [ "X${INSTNAME?}" = "X" ]; then
+
+    INSTNAME=`${DB2DIR?}/bin/db2usrinf -n -R`
+
+fi
+
+trap "stop_prog 2" 1 2 3 15
+
+# organize input and pass it to db2ckmig_exe
+call_db2ckmigexe
+
+# restore the original Library variables
+restoreLibVars
+
+# exit
+exit ${migrc?}
