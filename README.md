@@ -10,6 +10,23 @@ Download db2: [http://www-01.ibm.com/software/data/db2/linux-unix-windows/downlo
 A copy of db2 Express-C v10.1 for Mac OS X can be found in: db2/express-c/db2_express-c_v10.1_osx  
 1. execute db2setup (db2/express-c/db2_express-c_v10.1_osx/expc/db2setup)  
 
+For some reason i was not capable of getting the db2 to install using the normal setup.  
+After launching it i got following error output:  
+
+<code>DBI1190I  db2setup is preparing the DB2 Setup wizard which will guide you through the program setup process.</code>  <code>Please wait.</code>  
+<code>.../ibm-db2/db2/express-c/db2_express-c_v10.1_osx/expc/db2/macos/install/db2setup: line 606:</code>   <code>/tmp/db2_seriousbusiness.tmp.48706/db2/macos/install/../java/jre/bin/java: No such file or directory</code>  
+<code>DBI1160I  Non-root install is being performed.</code>  
+
+<code>You are using a Java(TM) Runtime Environment that has not been officially tested for use with DB2.</code>  
+<code>This command will continue to execute, however if you experience problems,</code>  
+<code>refer to the DB2 installation documentation for a list of supported environments.</code>
+
+
+Find the Java Home of a java version:  
+terminal command: /usr/libexec/java_home -v version-number  
+example: /usr/libexec/java_home -v 1.6  
+example: /usr/libexec/java_home -v 1.7  
+
 Alternative  
 1. execute db2_install (default install folder: /opt/IBM/db2/V10.1)  
 
