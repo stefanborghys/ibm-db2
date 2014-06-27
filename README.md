@@ -14,8 +14,8 @@ IBM db2 tryout
 
 This ebook is ideal for developers, consultants, ISVs, DBAs, students, or anyone who wants to get started with DB2. While this ebook focuses on DB2 Express-C  , the free database edition of DB2, the concepts and content are equally applicable to other DB2 editions on Linux, UNIX, and Windows.
 
-source: [https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20eBook%20-%20Getting%20Started%20with%20DB2%20Express-C](https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20eBook%20-%20Getting%20Started%20with%20DB2%20Express-C)
-repository: doc/Getting_Started_with_DB2_Express_v9.7_p4
+source: [https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20eBook%20-%20Getting%20Started%20with%20DB2%20Express-C](https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20eBook%20-%20Getting%20Started%20with%20DB2%20Express-C)  
+repository: [doc/Getting_Started_with_DB2_Express_v9.7_p4](https://github.com/stefanborghys/ibm-db2/blob/master/doc/Getting_Started_with_DB2_Express_v9.7_p4.pdf)
 ## Getting Started with DB2 Application Development
 - Discover DB2® application development using DB2 Express-C
 - Write SQL, XQuery, and understand pureXML® technology
@@ -27,7 +27,7 @@ repository: doc/Getting_Started_with_DB2_Express_v9.7_p4
 DB2 Express-C from IBM is the no-charge edition of DB2 data server for managing relational and XML data with ease. DB2 Express-C runs on Windows®, Linux®, Solaris, and Mac OS X systems, and provides application drivers for a variety of programming languages and frameworks including C/C++, Java, .NET, Ruby on Rails, PHP, Perl, and Python. Review this book and get started with DB2 application development!
 
 source: [https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20ebook%20-%20Getting%20Started%20with%20DB2%20Application%20Development](https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20ebook%20-%20Getting%20Started%20with%20DB2%20Application%20Development)  
-repository: doc/Getting_Started_with_DB2_App_Dev_p2.pdf  
+repository: [doc/Getting_Started_with_DB2_App_Dev_p2.pdf](https://github.com/stefanborghys/ibm-db2/blob/master/doc/Getting_Started_with_DB2_App_Dev_p2.pdf)  
 
 ## Getting Started with IBM Data Studio for DB2
 - Find out what IBM Data Studio can do for you
@@ -41,7 +41,7 @@ repository: doc/Getting_Started_with_DB2_App_Dev_p2.pdf
 
 IBM Data Studio is replacing the DB2® Control Center and other tools for DB2. In conjunction with DB2 Express-C, the no-charge edition of DB2, Data Studio is ideal for DBAs, developers, students, ISVs, or consultants because it's easy and free to use. IBM Data Studio can also be used with other data servers, and you can extend Data Studio with additional robust management and development capabilities from IBM to help accelerate solution delivery, optimize performance, protect data privacy, manage data growth, and more.
 
-source: [https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20ebook%20-%20Getting%20Started%20with%20IBM%20Data%20Studio%20for%20DB2](https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20ebook%20-%20Getting%20Started%20with%20IBM%20Data%20Studio%20for%20DB2)
-repository: doc/Getting_Started_with_IBM_Data_Studio_v311.pdf
+source: [https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20ebook%20-%20Getting%20Started%20with%20IBM%20Data%20Studio%20for%20DB2](https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Big%20Data%20University/page/FREE%20ebook%20-%20Getting%20Started%20with%20IBM%20Data%20Studio%20for%20DB2)  
+repository: [doc/Getting_Started_with_IBM_Data_Studio_v311.pdf](https://github.com/stefanborghys/ibm-db2/blob/master/doc/Getting_Started_with_IBM_Data_Studio_v311.pdf)
 
 
