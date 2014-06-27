@@ -9,7 +9,7 @@ Download db2: [http://www-01.ibm.com/software/data/db2/linux-unix-windows/downlo
 ## Mac OS X
 A copy of db2 Express-C v10.1 for Mac OS X can be found in: db2/express-c/db2_express-c_v10.1_osx  
 1. execute db2setup (db2/express-c/db2_express-c_v10.1_osx/expc/db2setup)  
-2. 
+2. execute db2_install (default folder: /opt/IBM/db2/V10.1)
 
 # E-Books
 ## Getting Started with DB2 Express-C
