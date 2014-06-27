@@ -3,9 +3,11 @@ ibm-db2
 
 IBM db2 tryout
 
+Download db2: [http://www-01.ibm.com/software/data/db2/linux-unix-windows/downloads.html](http://www-01.ibm.com/software/data/db2/linux-unix-windows/downloads.html)  
+
 # Installation
 ## Mac OS X
-A copy of DB2 Express-C v10.1 for Mac OS X can be found in: db2/express-c/db2_express-c_v10.1_osx  
+A copy of db2 Express-C v10.1 for Mac OS X can be found in: db2/express-c/db2_express-c_v10.1_osx  
 1. execute db2setup (db2/express-c/db2_express-c_v10.1_osx/expc/db2setup)  
 2. 
 
