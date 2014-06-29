@@ -32,7 +32,7 @@ example: /usr/libexec/java_home -v 1.6
 example: /usr/libexec/java_home -v 1.7  
 
 **Alternative - via terminal**  
-1. become administrator using sudo su 
+1. become administrator using sudo su  
 2. execute db2_install (default install folder: /opt/IBM/db2/V10.1)  
 3. create an instance, execute db2icrt <instance-name>  
   - /opt/IBM/db2/V10.1/instance/db2icrt testdb2 (the instance name can only have a max of 8 characters)  
